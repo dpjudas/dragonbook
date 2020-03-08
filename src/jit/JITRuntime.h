@@ -1,5 +1,9 @@
 #pragma once
 
+#include <map>
+#include <vector>
+#include <string>
+
 class IRFunction;
 class IRValue;
 class IRConstant;
@@ -26,7 +30,7 @@ private:
 	void virtualFree(void* ptr);
 
 	std::map<IRFunction*, void*> functionTable;
-	uint8_t* globals = nullptr;
+	std::vector<uint8_t> globals;
 
 	std::vector<uint8_t*> blocks;
 	std::vector<uint8_t*> frames;

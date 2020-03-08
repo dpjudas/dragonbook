@@ -1,20 +1,19 @@
 
-#include "Precomp.h"
 #include "IRContext.h"
 #include "IRType.h"
 #include "IRFunction.h"
-#include "MachineCode.h"
+#include "mc/MachineCode.h"
 
 IRContext::IRContext()
 {
-	voidType = new(gc()) IRVoidType();
-	int1Type = new(gc()) IRInt1Type();
-	int8Type = new(gc()) IRInt8Type();
-	int16Type = new(gc()) IRInt16Type();
-	int32Type = new(gc()) IRInt32Type();
-	int64Type = new(gc()) IRInt64Type();
-	floatType = new(gc()) IRFloatType();
-	doubleType = new(gc()) IRDoubleType();
+	voidType = newType<IRVoidType>();
+	int1Type = newType<IRInt1Type>();
+	int8Type = newType<IRInt8Type>();
+	int16Type = newType<IRInt16Type>();
+	int32Type = newType<IRInt32Type>();
+	int64Type = newType<IRInt64Type>();
+	floatType = newType<IRFloatType>();
+	doubleType = newType<IRDoubleType>();
 }
 
 IRContext::~IRContext()
@@ -73,28 +72,28 @@ IRFunctionType *IRContext::getFunctionType(IRType *returnType, std::vector<IRTyp
 		}
 	}
 
-	IRFunctionType *type = new(gc()) IRFunctionType(returnType, args);
+	IRFunctionType *type = newType<IRFunctionType>(returnType, args);
 	functionTypes.push_back(type);
 	return type;
 }
 
 IRFunction *IRContext::createFunction(IRFunctionType *type, const std::string &name)
 {
-	IRFunction *func = new(gc()) IRFunction(this, type, name);
+	IRFunction *func = newValue<IRFunction>(this, type, name);
 	functions[name] = func;
 	return func;
 }
 
 IRGlobalVariable *IRContext::createGlobalVariable(IRType *type, IRConstant *value, const std::string &name)
 {
-	IRGlobalVariable *var = new(gc()) IRGlobalVariable(type->getPointerTo(this), value, name);
+	IRGlobalVariable *var = newValue<IRGlobalVariable>(type->getPointerTo(this), value, name);
 	globalVars[name] = var;
 	return var;
 }
 
 IRStructType *IRContext::createStructType(const std::string &name)
 {
-	return new(gc()) IRStructType(name);
+	return newType<IRStructType>(name);
 }
 
 IRConstantStruct *IRContext::getConstantStruct(IRStructType *type, const std::vector<IRConstant *> &values)
@@ -117,7 +116,7 @@ IRConstantStruct *IRContext::getConstantStruct(IRStructType *type, const std::ve
 		}
 	}
 
-	IRConstantStruct *value = new(gc()) IRConstantStruct(type, values);
+	IRConstantStruct *value = newValue<IRConstantStruct>(type, values);
 	constantStructs.push_back(value);
 	return value;
 }
@@ -128,7 +127,7 @@ IRConstantFP *IRContext::getConstantFloat(IRType *type, double value)
 	if (it != floatConstants.end())
 		return it->second;
 
-	IRConstantFP *c = new(gc()) IRConstantFP(type, value);
+	IRConstantFP *c = newValue<IRConstantFP>(type, value);
 	floatConstants[{ type, value }] = c;
 	return c;
 }
@@ -139,7 +138,7 @@ IRConstantInt *IRContext::getConstantInt(IRType *type, uint64_t value)
 	if (it != intConstants.end())
 		return it->second;
 
-	IRConstantInt *c = new(gc()) IRConstantInt(type, value);
+	IRConstantInt *c = newValue<IRConstantInt>(type, value);
 	intConstants[{ type, value }] = c;
 	return c;
 }

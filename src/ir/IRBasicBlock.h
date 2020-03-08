@@ -7,7 +7,7 @@ class IRContext;
 class IRFunction;
 class IRInst;
 
-class IRBasicBlock : public OneTimeGCObject
+class IRBasicBlock
 {
 public:
 	IRBasicBlock(IRFunction *func, std::string comment) : function(func), comment(comment) { }

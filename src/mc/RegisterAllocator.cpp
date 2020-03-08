@@ -1,5 +1,4 @@
 
-#include "Precomp.h"
 #include "RegisterAllocator.h"
 
 void RegisterAllocator::run(IRContext* context, MachineFunction* func)

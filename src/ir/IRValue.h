@@ -1,16 +1,18 @@
 #pragma once
 
 #include <cstdint>
-#include "../Util/OneTimeGCObject.h"
+#include <vector>
+#include <string>
 
 class IRContext;
 class IRType;
 class IRStructType;
 
-class IRValue : public OneTimeGCObject
+class IRValue
 {
 public:
 	IRValue(IRType *type) : type(type) { }
+	virtual ~IRValue() = default;
 
 	IRType *type;
 };

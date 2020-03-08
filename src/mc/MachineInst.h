@@ -2,8 +2,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "../Util/OneTimeGCObject.h"
-#include "IR.h"
+#include "ir/IR.h"
 
 class MachineBasicBlock;
 
@@ -65,7 +64,7 @@ enum class MachineUnwindHint
 	RegisterStackLocation
 };
 
-class MachineInst : public OneTimeGCObject
+class MachineInst
 {
 public:
 	MachineInstOpcode opcode;
@@ -75,7 +74,7 @@ public:
 	MachineUnwindHint unwindHint = MachineUnwindHint::None;
 };
 
-class MachineBasicBlock : public OneTimeGCObject
+class MachineBasicBlock
 {
 public:
 	std::vector<MachineInst*> code;
@@ -97,7 +96,7 @@ public:
 	int size;
 };
 
-class MachineFunction : public OneTimeGCObject
+class MachineFunction
 {
 public:
 	IRFunctionType* type = nullptr;

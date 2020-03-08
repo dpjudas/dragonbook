@@ -1,15 +1,16 @@
 #pragma once
 
-#include "../Util/OneTimeGCObject.h"
 #include "IRContext.h"
 #include "IRValue.h"
 
 class IRContext;
 class IRPointerType;
 
-class IRType : public OneTimeGCObject
+class IRType
 {
 public:
+	virtual ~IRType() = default;
+
 	IRPointerType *getPointerTo(IRContext *context);
 	virtual IRType *getPointerElementType() { return nullptr; }
 
@@ -72,6 +73,6 @@ public:
 inline IRPointerType *IRType::getPointerTo(IRContext *context)
 {
 	if (!pointer)
-		pointer = new(context->gc()) IRPointerType(this);
+		pointer = context->newType<IRPointerType>(this);
 	return pointer;
 }

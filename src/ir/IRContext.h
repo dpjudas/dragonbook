@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
-#include "../Util/OneTimeGC.h"
-#include "JITRuntime.h"
+#include <map>
+#include <vector>
+#include <memory>
+#include "jit/JITRuntime.h"
 
 class IRType;
 class IRPointerType;
@@ -15,8 +17,9 @@ class IRConstantInt;
 class IRFunction;
 class IRFunctionType;
 class IRGlobalVariable;
+class IRBasicBlock;
 
-class IRContext : public OneTimeGarbageCollector
+class IRContext
 {
 public:
 	IRContext();
@@ -65,7 +68,26 @@ public:
 	IRPointerType *getFloatPtrTy();
 	IRPointerType *getDoublePtrTy();
 
-	OneTimeGarbageCollector *gc() { return this; }
+	template<typename T, typename... Types>
+	T* newType(Types&&... args)
+	{
+		allocatedTypes.push_back(std::make_unique<T>(std::forward<Types>(args)...));
+		return static_cast<T*>(allocatedTypes.back().get());
+	}
+
+	template<typename T, typename... Types>
+	T* newValue(Types&&... args)
+	{
+		allocatedValues.push_back(std::make_unique<T>(std::forward<Types>(args)...));
+		return static_cast<T*>(allocatedValues.back().get());
+	}
+
+	template<typename... Types>
+	IRBasicBlock* newBasicBlock(Types&&... args)
+	{
+		allocatedBBs.push_back(std::make_unique<IRBasicBlock>(std::forward<Types>(args)...));
+		return allocatedBBs.back().get();
+	}
 
 private:
 	IRType *voidType = nullptr;
@@ -84,4 +106,8 @@ private:
 	std::vector<IRConstantStruct *> constantStructs;
 	std::map<IRValue *, void *> globalMappings;
 	JITRuntime jit;
+
+	std::vector<std::unique_ptr<IRType>> allocatedTypes;
+	std::vector<std::unique_ptr<IRValue>> allocatedValues;
+	std::vector<std::unique_ptr<IRBasicBlock>> allocatedBBs;
 };

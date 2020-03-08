@@ -95,7 +95,7 @@ private:
 	template<typename T, typename... Args>
 	T *add(Args && ... args)
 	{
-		T *inst = new(bb->function->context->gc()) T(std::forward<Args>(args)...);
+		T *inst = bb->function->context->newValue<T>(std::forward<Args>(args)...);
 		bb->code.push_back(inst);
 		return inst;
 	}

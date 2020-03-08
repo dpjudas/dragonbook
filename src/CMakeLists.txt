@@ -27,7 +27,6 @@ set(LIB_SOURCES
 )
 
 set(TEST_SOURCES
-	test/Test.cpp
 )
 
 set(LIB_LIBS

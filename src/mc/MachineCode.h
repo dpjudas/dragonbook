@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IR.h"
+#include "ir/IR.h"
 #include "MachineInst.h"
 
 class FuncSignatureContainer;

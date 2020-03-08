@@ -1,5 +1,4 @@
 
-#include "Precomp.h"
 #include "IRFunction.h"
 #include "IRContext.h"
 #include "IRInst.h"
@@ -12,7 +11,7 @@ IRFunction::IRFunction(IRContext *context, IRFunctionType *type, const std::stri
 	args.reserve(type->args.size());
 	for (IRType *argType : type->args)
 	{
-		args.push_back(new(context->gc()) IRFunctionArg(argType, index++));
+		args.push_back(context->newValue<IRFunctionArg>(argType, index++));
 	}
 }
 
@@ -20,14 +19,14 @@ IRInstAlloca *IRFunction::createAlloca(IRType *type, IRValue *arraySize, const s
 {
 	if (!arraySize)
 		arraySize = context->getConstantInt(1);
-	auto inst = new(context->gc()) IRInstAlloca(context, type, arraySize, name);
+	auto inst = context->newValue<IRInstAlloca>(context, type, arraySize, name);
 	stackVars.push_back(inst);
 	return inst;
 }
 
 IRBasicBlock *IRFunction::createBasicBlock(const std::string &comment)
 {
-	auto bb = new(context->gc()) IRBasicBlock(this, comment);
+	auto bb = context->newBasicBlock(this, comment);
 	basicBlocks.push_back(bb);
 	return bb;
 }

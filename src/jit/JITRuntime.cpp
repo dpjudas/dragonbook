@@ -1,12 +1,14 @@
 
-#include "Precomp.h"
 #include "JITRuntime.h"
-#include "MachineCode.h"
-#include "MachineInst.h"
-#include "UnwindInfoWindows.h"
-#include "UnwindInfoUnix.h"
+#include "mc/MachineCode.h"
+#include "mc/MachineInst.h"
+#include "mc/UnwindInfoWindows.h"
+#include "mc/UnwindInfoUnix.h"
 #include <memory>
-#include "Scripting/Runtime/GC.h"
+
+#ifdef WIN32
+#include <Windows.h>
+#endif
 
 #ifndef WIN32
 #include <sys/mman.h>
@@ -24,9 +26,6 @@ JITRuntime::JITRuntime()
 
 JITRuntime::~JITRuntime()
 {
-	if (globals)
-		gcReleaseRoot(globals);
-
 #ifdef _WIN64
 	for (auto p : frames)
 	{
@@ -57,9 +56,7 @@ void JITRuntime::compile(const std::map<std::string, IRFunction*>& functions, co
 		globalsSize += size;
 	}
 
-	globals = (uint8_t*)gcAlloc(globalsSize);
-	gcCreateRoot(globals);
-	memset(globals, 0, globalsSize);
+	globals.resize(globalsSize);
 
 	MachineCodeHolder codeholder;
 
@@ -110,19 +107,19 @@ void JITRuntime::initGlobal(int offset, IRConstant* value)
 	{
 		if (dynamic_cast<IRInt32Type*>(initInt->type) || dynamic_cast<IRInt1Type*>(initInt->type))
 		{
-			*reinterpret_cast<uint32_t*>(globals + offset) = (uint32_t)initInt->value;
+			*reinterpret_cast<uint32_t*>(globals.data() + offset) = (uint32_t)initInt->value;
 		}
 		else if (dynamic_cast<IRInt64Type*>(initInt->type))
 		{
-			*reinterpret_cast<uint64_t*>(globals + offset) = (uint64_t)initInt->value;
+			*reinterpret_cast<uint64_t*>(globals.data() + offset) = (uint64_t)initInt->value;
 		}
 		else if (dynamic_cast<IRInt16Type*>(initInt->type))
 		{
-			*reinterpret_cast<uint16_t*>(globals + offset) = (uint16_t)initInt->value;
+			*reinterpret_cast<uint16_t*>(globals.data() + offset) = (uint16_t)initInt->value;
 		}
 		else if (dynamic_cast<IRInt8Type*>(initInt->type))
 		{
-			*reinterpret_cast<uint8_t*>(globals + offset) = (uint8_t)initInt->value;
+			*reinterpret_cast<uint8_t*>(globals.data() + offset) = (uint8_t)initInt->value;
 		}
 		else
 		{
@@ -133,11 +130,11 @@ void JITRuntime::initGlobal(int offset, IRConstant* value)
 	{
 		if (dynamic_cast<IRFloatType*>(initFloat->type))
 		{
-			*reinterpret_cast<float*>(globals + offset) = (float)initFloat->value;
+			*reinterpret_cast<float*>(globals.data() + offset) = (float)initFloat->value;
 		}
 		else if (dynamic_cast<IRDoubleType*>(initFloat->type))
 		{
-			*reinterpret_cast<double*>(globals + offset) = initFloat->value;
+			*reinterpret_cast<double*>(globals.data() + offset) = initFloat->value;
 		}
 		else
 		{
@@ -146,7 +143,7 @@ void JITRuntime::initGlobal(int offset, IRConstant* value)
 	}
 	else if (initFunc)
 	{
-		*reinterpret_cast<void**>(globals + offset) = getPointerToFunction(initFunc);
+		*reinterpret_cast<void**>(globals.data() + offset) = getPointerToFunction(initFunc);
 	}
 	else
 	{
@@ -165,7 +162,7 @@ void* JITRuntime::getPointerToFunction(IRFunction* func)
 
 void* JITRuntime::getPointerToGlobal(IRGlobalVariable* var)
 {
-	return globals + var->globalsOffset;
+	return globals.data() + var->globalsOffset;
 }
 
 #ifdef WIN32
