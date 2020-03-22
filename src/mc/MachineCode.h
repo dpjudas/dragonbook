@@ -12,18 +12,31 @@ public:
 	void addFunction(IRFunction* func, const void* external);
 
 	size_t codeSize() const { return code.size(); }
-	size_t relocate(void* dest) const;
+	size_t unwindDataSize() const { return unwindData.size(); }
 
-private:
-	std::vector<uint8_t> code;
+	void relocate(void* codeDest, void* unwindDest) const;
 
 	struct FunctionEntry
 	{
-		size_t pos = 0;
+		IRFunction* func = nullptr;
 		const void* external = nullptr;
+
+		size_t beginAddress = 0;
+		size_t endAddress = 0;
+
+		size_t beginUnwindData = 0;
+		size_t endUnwindData = 0;
+		unsigned int unixUnwindFunctionStart = 0;
 	};
-	std::map<IRFunction*, FunctionEntry> functionTable;
-	
+
+	const std::vector<FunctionEntry>& getFunctionTable() const { return functionTable; };
+
+private:
+	std::vector<uint8_t> code;
+	std::vector<uint8_t> unwindData;
+	std::vector<FunctionEntry> functionTable;
+	std::map<IRFunction*, size_t> funcToTableIndex;
+
 	struct BBRelocateEntry
 	{
 		BBRelocateEntry() = default;

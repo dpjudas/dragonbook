@@ -167,49 +167,42 @@ void* JITRuntime::getPointerToGlobal(IRGlobalVariable* var)
 
 #ifdef WIN32
 
-void* JITRuntime::add(MachineCodeHolder* codeholder)
+void JITRuntime::add(MachineCodeHolder* codeholder)
 {
+#ifdef _WIN64
 	size_t codeSize = codeholder->codeSize();
+	size_t unwindDataSize = codeholder->unwindDataSize();
+	size_t functionTableSize = codeholder->getFunctionTable().size() * sizeof(RUNTIME_FUNCTION);
+
+	// Make sure everything is 16 byte aligned
 	codeSize = (codeSize + 15) / 16 * 16;
+	unwindDataSize = (unwindDataSize + 15) / 16 * 16;
+	functionTableSize = (functionTableSize + 15) / 16 * 16;
 
-#ifdef _WIN64
-	std::vector<uint16_t> unwindInfo = UnwindInfoWindows::create(codeholder->getFunc());
-	size_t unwindInfoSize = unwindInfo.size() * sizeof(uint16_t);
-	size_t functionTableSize = sizeof(RUNTIME_FUNCTION);
-#else
-	size_t unwindInfoSize = 0;
-	size_t functionTableSize = 0;
-#endif
+	uint8_t* baseaddr = (uint8_t*)allocJitMemory(codeSize + unwindDataSize + functionTableSize);
+	uint8_t* unwindaddr = baseaddr + codeSize;
+	uint8_t* tableaddr = baseaddr + codeSize + unwindDataSize;
 
-	uint8_t* p = (uint8_t*)allocJitMemory(codeSize + unwindInfoSize + functionTableSize);
-	size_t relocSize = codeholder->relocate(p);
+	codeholder->relocate(baseaddr, unwindaddr);
 
-	size_t unwindStart = relocSize;
-	unwindStart = (unwindStart + 15) / 16 * 16;
-	blockPos -= codeSize - unwindStart;
-
-#ifdef _WIN64
-	uint8_t* baseaddr = blocks.back();
-	uint8_t* startaddr = p;
-	uint8_t* endaddr = p + relocSize;
-	uint8_t* unwindptr = p + unwindStart;
-	memcpy(unwindptr, unwindInfo.data(), unwindInfoSize);
-
-	RUNTIME_FUNCTION* table = (RUNTIME_FUNCTION*)(unwindptr + unwindInfoSize);
-	table[0].BeginAddress = (DWORD)(ptrdiff_t)(startaddr - baseaddr);
-	table[0].EndAddress = (DWORD)(ptrdiff_t)(endaddr - baseaddr);
+	RUNTIME_FUNCTION* table = (RUNTIME_FUNCTION*)tableaddr;
+	for (const auto& entry : codeholder->getFunctionTable())
+	{
+		table->BeginAddress = (DWORD)entry.beginAddress;
+		table->EndAddress = (DWORD)entry.endAddress;
 #ifndef __MINGW64__
-	table[0].UnwindInfoAddress = (DWORD)(ptrdiff_t)(unwindptr - baseaddr);
+		table->UnwindInfoAddress = (DWORD)(codeSize + entry.beginUnwindData);
 #else
-	table[0].UnwindData = (DWORD)(ptrdiff_t)(unwindptr - baseaddr);
+		table->UnwindData = (DWORD)(codeSize + entry.beginUnwindData);
 #endif
-	BOOLEAN result = RtlAddFunctionTable(table, 1, (DWORD64)baseaddr);
+		table++;
+	}
+
+	BOOLEAN result = RtlAddFunctionTable(table, (DWORD)codeholder->getFunctionTable().size(), (DWORD64)baseaddr);
 	frames.push_back((uint8_t*)table);
 	if (result == 0)
 		throw std::runtime_error("RtlAddFunctionTable failed");
 #endif
-
-	return p;
 }
 
 void* JITRuntime::virtualAlloc(size_t size)

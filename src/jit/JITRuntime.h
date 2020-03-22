@@ -24,7 +24,7 @@ public:
 private:
 	void initGlobal(int offset, IRConstant* value);
 
-	void* add(MachineCodeHolder* codeholder);
+	void add(MachineCodeHolder* codeholder);
 	void* allocJitMemory(size_t size);
 	void* virtualAlloc(size_t size);
 	void virtualFree(void* ptr);
