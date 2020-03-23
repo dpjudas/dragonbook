@@ -26,9 +26,6 @@ set(LIB_SOURCES
 	mc/UnwindInfoWindows.h
 )
 
-set(TEST_SOURCES
-)
-
 set(LIB_LIBS
 )
 
@@ -46,7 +43,7 @@ if (MSVC)
 	set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}") # Use all cores for compilation
 endif()
 
-add_executable(IRCompiler WIN32 MACOSX_BUNDLE ${LIB_SOURCES} ${NOT_COMPILED_SOURCES} ${TEST_SOURCES})
+add_library(IRCompiler STATIC ${LIB_SOURCES} ${NOT_COMPILED_SOURCES})
 
 target_link_libraries(IRCompiler ${LIB_LIBS})
 
