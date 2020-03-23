@@ -107,7 +107,7 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 		src.type = MachineOperandType::reg;
 		src.registerIndex = (int)physReg;
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::push;
 		inst->operands.push_back(src);
 		inst->unwindHint = MachineUnwindHint::PushNonvolatile;
@@ -124,7 +124,7 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 		src.type = MachineOperandType::imm;
 		src.immvalue = stackSize;
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::sub64;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
@@ -143,7 +143,7 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 		src.type = MachineOperandType::reg;
 		src.registerIndex = (int)physReg;
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::storesd;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
@@ -157,7 +157,7 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 		dst.type = MachineOperandType::basicblock;
 		dst.bb = func->basicBlocks.front();
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::jmp;
 		inst->operands.push_back(dst);
 		func->prolog->code.push_back(inst);
@@ -177,7 +177,7 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 		src.type = MachineOperandType::stack;
 		src.stackOffset = nextStackOffset + i * 8;
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::loadsd;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
@@ -195,7 +195,7 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 		src.type = MachineOperandType::imm;
 		src.immvalue = stackSize;
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::add64;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
@@ -210,14 +210,14 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 		dst.type = MachineOperandType::reg;
 		dst.registerIndex = (int)physReg;
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::pop;
 		inst->operands.push_back(dst);
 		func->epilog->code.push_back(inst);
 	}
 
 	{
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::ret;
 		func->epilog->code.push_back(inst);
 	}
@@ -390,7 +390,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		src.type = MachineOperandType::stack;
 		src.stackOffset = vreg.stackoffset;
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::load64 : MachineInstOpcode::loadsd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
@@ -412,7 +412,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		src.type = MachineOperandType::reg;
 		src.registerIndex = vreg.physreg;
 
-		auto inst = new(context) MachineInst();
+		auto inst = context->newMachineInst();
 		inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::mov64 : MachineInstOpcode::movsd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
@@ -448,7 +448,7 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 	src.type = MachineOperandType::reg;
 	src.registerIndex = vreg.physreg;
 
-	auto inst = new(context) MachineInst();
+	auto inst = context->newMachineInst();
 	inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::store64 : MachineInstOpcode::storesd;
 	inst->operands.push_back(dest);
 	inst->operands.push_back(src);

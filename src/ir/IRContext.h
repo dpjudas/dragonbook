@@ -18,6 +18,9 @@ class IRFunction;
 class IRFunctionType;
 class IRGlobalVariable;
 class IRBasicBlock;
+class MachineFunction;
+class MachineBasicBlock;
+class MachineInst;
 
 class IRContext
 {
@@ -89,6 +92,27 @@ public:
 		return allocatedBBs.back().get();
 	}
 
+	template<typename... Types>
+	MachineFunction* newMachineFunction(Types&&... args)
+	{
+		allocatedMachineFunctions.push_back(std::make_unique<MachineFunction>(std::forward<Types>(args)...));
+		return allocatedMachineFunctions.back().get();
+	}
+
+	template<typename... Types>
+	MachineBasicBlock* newMachineBasicBlock(Types&&... args)
+	{
+		allocatedMachineBBs.push_back(std::make_unique<MachineBasicBlock>(std::forward<Types>(args)...));
+		return allocatedMachineBBs.back().get();
+	}
+
+	template<typename... Types>
+	MachineInst* newMachineInst(Types&&... args)
+	{
+		allocatedMachineInsts.push_back(std::make_unique<MachineInst>(std::forward<Types>(args)...));
+		return allocatedMachineInsts.back().get();
+	}
+
 private:
 	IRType *voidType = nullptr;
 	IRType *int1Type = nullptr;
@@ -110,4 +134,7 @@ private:
 	std::vector<std::unique_ptr<IRType>> allocatedTypes;
 	std::vector<std::unique_ptr<IRValue>> allocatedValues;
 	std::vector<std::unique_ptr<IRBasicBlock>> allocatedBBs;
+	std::vector<std::unique_ptr<MachineFunction>> allocatedMachineFunctions;
+	std::vector<std::unique_ptr<MachineBasicBlock>> allocatedMachineBBs;
+	std::vector<std::unique_ptr<MachineInst>> allocatedMachineInsts;
 };
