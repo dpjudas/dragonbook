@@ -53,6 +53,20 @@ void MachineCodeHolder::relocate(void* codeDest, void* unwindDest) const
 	memcpy(codeDest, code.data(), code.size());
 	memcpy(unwindDest, unwindData.data(), unwindData.size());
 
+#ifndef WIN32
+	// Patch absolute address and size for each FDE entry in the .eh_frame
+	uint8_t* unwindDest8 = (uint8_t*)unwindDest;
+	for (const auto& entry : functionTable)
+	{
+		if (entry.beginUnwindData != entry.endUnwindData)
+		{
+			uint64_t* fdeFunc = (uint64_t*)(unwindDest8 + entry.beginUnwindData + entry.unixUnwindFunctionStart);
+			fdeFunc[0] = (uint64_t)(ptrdiff_t)((uint8_t*)codeDest + entry.beginAddress);
+			fdeFunc[1] = (uint64_t)(ptrdiff_t)(entry.endAddress - entry.beginAddress);
+		}
+	}
+#endif
+
 	uint8_t* d = (uint8_t*)codeDest;
 
 	for (const auto& entry : bbRelocateInfo)

@@ -223,40 +223,25 @@ void JITRuntime::virtualFree(void* ptr)
 
 #else
 
-void* JITRuntime::add(MachineCodeHolder* codeholder)
+void JITRuntime::add(MachineCodeHolder* codeholder)
 {
 	size_t codeSize = codeholder->codeSize();
-	if (codeSize == 0)
-		return nullptr;
+	size_t unwindDataSize = codeholder->unwindDataSize();
 
-	unsigned int fdeFunctionStart = 0;
-	std::vector<uint8_t> unwindInfo = UnwindInfoUnix::create(codeholder->getFunc(), fdeFunctionStart);
-	size_t unwindInfoSize = unwindInfo.size();
-
+	// Make sure everything is 16 byte aligned
 	codeSize = (codeSize + 15) / 16 * 16;
+	unwindDataSize = (unwindDataSize + 15) / 16 * 16;
 
-	uint8_t* p = (uint8_t*)allocJitMemory(codeSize + unwindInfoSize);
-	size_t relocSize = codeholder->relocate(p);
+	uint8_t* baseaddr = (uint8_t*)allocJitMemory(codeSize + unwindDataSize);
+	uint8_t* unwindaddr = baseaddr + codeSize;
 
-	size_t unwindStart = relocSize;
-	unwindStart = (unwindStart + 15) / 16 * 16;
-	blockPos -= codeSize - unwindStart;
+	codeholder->relocate(baseaddr, unwindaddr);
 
-	uint8_t* baseaddr = blocks.back();
-	uint8_t* startaddr = p;
-	uint8_t* endaddr = p + relocSize;
-	uint8_t* unwindptr = p + unwindStart;
-	memcpy(unwindptr, &unwindInfo[0], unwindInfoSize);
-
-	if (unwindInfo.size() > 0)
+	if (unwindDataSize > 0)
 	{
-		uint64_t* unwindfuncaddr = (uint64_t*)(unwindptr + fdeFunctionStart);
-		unwindfuncaddr[0] = (ptrdiff_t)startaddr;
-		unwindfuncaddr[1] = (ptrdiff_t)(endaddr - startaddr);
-
 #ifdef __APPLE__
 		// On macOS __register_frame takes a single FDE as an argument
-		uint8_t* entry = unwindptr;
+		uint8_t* entry = unwindaddr;
 		while (true)
 		{
 			uint32_t length = *((uint32_t*)entry);
@@ -290,12 +275,15 @@ void* JITRuntime::add(MachineCodeHolder* codeholder)
 		}
 #else
 		// On Linux it takes a pointer to the entire .eh_frame
-		__register_frame(unwindptr);
-		frames.push_back(unwindptr);
+		__register_frame(unwindaddr);
+		frames.push_back(unwindaddr);
 #endif
 	}
 
-	return p;
+	for (const auto& entry : codeholder->getFunctionTable())
+	{
+		functionTable[entry.func] = baseaddr + entry.beginAddress;
+	}
 }
 
 void* JITRuntime::virtualAlloc(size_t size)
