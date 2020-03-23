@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.3.2)
 
 set(TEST_SOURCES
 	Main.cpp
@@ -12,6 +12,8 @@ include_directories(. ../src)
 
 if (WIN32)
 	add_definitions(-DWIN32 -D_WIN32)
+else()
+	set(CMAKE_CXX_FLAGS "-std=gnu++14 ${CMAKE_CXX_FLAGS}")
 endif()
 
 # Set up flags for MSVC

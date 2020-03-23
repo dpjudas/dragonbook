@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.3.2)
 
 set(LIB_SOURCES
 	ir/IR.h
@@ -41,6 +41,8 @@ endif()
 # Set up flags for MSVC
 if (MSVC)
 	set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}") # Use all cores for compilation
+else()
+	set(CMAKE_CXX_FLAGS "-std=gnu++14 ${CMAKE_CXX_FLAGS}")
 endif()
 
 add_library(IRCompiler STATIC ${LIB_SOURCES} ${NOT_COMPILED_SOURCES})
