@@ -186,16 +186,17 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 	codeholder->relocate(baseaddr, unwindaddr);
 
 	RUNTIME_FUNCTION* table = (RUNTIME_FUNCTION*)tableaddr;
+	int tableIndex = 0;
 	for (const auto& entry : codeholder->getFunctionTable())
 	{
-		table->BeginAddress = (DWORD)entry.beginAddress;
-		table->EndAddress = (DWORD)entry.endAddress;
+		table[tableIndex].BeginAddress = (DWORD)entry.beginAddress;
+		table[tableIndex].EndAddress = (DWORD)entry.endAddress;
 #ifndef __MINGW64__
-		table->UnwindInfoAddress = (DWORD)(codeSize + entry.beginUnwindData);
+		table[tableIndex].UnwindInfoAddress = (DWORD)(codeSize + entry.beginUnwindData);
 #else
-		table->UnwindData = (DWORD)(codeSize + entry.beginUnwindData);
+		table[tableIndex].UnwindData = (DWORD)(codeSize + entry.beginUnwindData);
 #endif
-		table++;
+		tableIndex++;
 	}
 
 	BOOLEAN result = RtlAddFunctionTable(table, (DWORD)codeholder->getFunctionTable().size(), (DWORD64)baseaddr);
