@@ -202,6 +202,11 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 	frames.push_back((uint8_t*)table);
 	if (result == 0)
 		throw std::runtime_error("RtlAddFunctionTable failed");
+
+	for (const auto& entry : codeholder->getFunctionTable())
+	{
+		functionTable[entry.func] = baseaddr + entry.beginAddress;
+	}
 #endif
 }
 
