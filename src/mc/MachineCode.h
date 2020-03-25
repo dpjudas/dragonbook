@@ -236,4 +236,5 @@ private:
 
 	MachineCodeHolder* codeholder;
 	MachineFunction* sfunc;
+	size_t funcBeginAddress = 0;
 };

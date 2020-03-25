@@ -82,11 +82,11 @@ void MachineCodeHolder::relocate(void* codeDest, void* unwindDest) const
 		uint64_t value;
 		if (!funcEntry.external)
 		{
-			value = (ptrdiff_t)funcEntry.external;
+			value = (ptrdiff_t)d + funcEntry.beginAddress;
 		}
 		else
 		{
-			value = (ptrdiff_t)d + funcEntry.beginAddress;
+			value = (ptrdiff_t)funcEntry.external;
 		}
 
 		memcpy(d + entry.pos, &value, sizeof(uint64_t));
@@ -97,6 +97,8 @@ void MachineCodeHolder::relocate(void* codeDest, void* unwindDest) const
 
 void MachineCodeWriter::codegen()
 {
+	funcBeginAddress = codeholder->code.size();
+
 	basicblock(sfunc->prolog);
 
 	for (MachineBasicBlock* bb : sfunc->basicBlocks)
@@ -113,7 +115,7 @@ void MachineCodeWriter::basicblock(MachineBasicBlock* bb)
 	for (MachineInst* inst : bb->code)
 	{
 		opcode(inst);
-		inst->unwindOffset = (int)codeholder->code.size();
+		inst->unwindOffset = (int)(codeholder->code.size() - funcBeginAddress);
 	}
 }
 

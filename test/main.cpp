@@ -20,12 +20,18 @@ int main(int argc, char** argv)
 				context.getFloatTy()
 			});
 
+		IRFunctionType* functype2 = context.getFunctionType(context.getFloatTy(), {});
+
 		IRFunction* func = context.createFunction(functype, "main");
-		IRBasicBlock* entry = func->createBasicBlock("entry");
+		IRFunction* func2 = context.createFunction(functype2, "func2");
 
 		IRBuilder builder;
-		builder.SetInsertPoint(entry);
-		builder.CreateRet(builder.CreateFAdd(func->args[0], func->args[4]));
+
+		builder.SetInsertPoint(func->createBasicBlock("entry"));
+		builder.CreateRet(builder.CreateFAdd(builder.CreateFAdd(func->args[0], func->args[4]), builder.CreateCall(func2, {})));
+
+		builder.SetInsertPoint(func2->createBasicBlock("entry"));
+		builder.CreateRet(context.getConstantFloat(context.getFloatTy(), 42.0f));
 
 		context.codegen();
 
