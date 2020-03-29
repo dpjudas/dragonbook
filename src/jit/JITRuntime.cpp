@@ -1,9 +1,6 @@
 
 #include "JITRuntime.h"
-#include "mc/MachineCode.h"
-#include "mc/MachineInst.h"
-#include "mc/UnwindInfoWindows.h"
-#include "mc/UnwindInfoUnix.h"
+#include "mc/MachineCodeHolder.h"
 #include <memory>
 
 #ifdef WIN32

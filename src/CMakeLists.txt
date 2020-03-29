@@ -18,8 +18,10 @@ set(LIB_SOURCES
 	mc/RegisterAllocator.h
 	mc/MachineInst.cpp
 	mc/MachineInst.h
-	mc/MachineCode.cpp
-	mc/MachineCode.h
+	mc/MachineCodeHolder.cpp
+	mc/MachineCodeHolder.h
+	mc/MachineCodeWriter.cpp
+	mc/MachineCodeWriter.h
 	mc/UnwindInfoUnix.cpp
 	mc/UnwindInfoUnix.h
 	mc/UnwindInfoWindows.cpp

@@ -2,7 +2,9 @@
 #include "IRContext.h"
 #include "IRType.h"
 #include "IRFunction.h"
-#include "mc/MachineCode.h"
+#include "IRBasicBlock.h"
+#include "IRFunction.h"
+#include "mc/MachineInst.h"
 
 IRContext::IRContext()
 {
