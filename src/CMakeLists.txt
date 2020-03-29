@@ -16,7 +16,8 @@ set(LIB_SOURCES
 	jit/JITRuntime.h
 	mc/RegisterAllocator.cpp
 	mc/RegisterAllocator.h
-	mc/MachineInst.cpp
+	mc/MachineInstSelection.cpp
+	mc/MachineInstSelection.h
 	mc/MachineInst.h
 	mc/MachineCodeHolder.cpp
 	mc/MachineCodeHolder.h

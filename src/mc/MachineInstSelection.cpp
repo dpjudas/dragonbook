@@ -1,5 +1,5 @@
 
-#include "MachineInst.h"
+#include "MachineInstSelection.h"
 
 MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 {

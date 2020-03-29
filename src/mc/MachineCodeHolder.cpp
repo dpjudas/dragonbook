@@ -1,6 +1,7 @@
 
 #include "MachineCodeHolder.h"
 #include "MachineCodeWriter.h"
+#include "MachineInstSelection.h"
 #include "RegisterAllocator.h"
 #include "UnwindInfoWindows.h"
 #include "UnwindInfoUnix.h"
