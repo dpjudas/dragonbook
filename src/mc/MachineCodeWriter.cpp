@@ -1142,11 +1142,27 @@ void MachineCodeWriter::emitInstSSE_RM(int flags, std::initializer_list<int> opc
 		base = (int)RegisterName::rsp;
 		sib = true;
 	}
+	else if (inst->operands[1].type == MachineOperandType::constant)
+	{
+		disp = -1;
+		dispsize = 32;
+		mod = 0;
+		rm = 5;
+	}
 
 	writeOpcode(flags, opcode, modreg >> 3, index >> 3, rm >> 3);
 	writeModRM(mod, modreg, rm);
 	if (sib) writeSIB(scale, index, base);
 	if (dispsize > 0) writeImm(dispsize, disp);
+
+	if (inst->operands[1].type == MachineOperandType::constant)
+	{
+		size_t codepos = codeholder->code.size() - 4;
+		size_t datapos = codeholder->data.size();
+		MachineConstant* constant = &sfunc->constants[inst->operands[1].constantIndex];
+		codeholder->data.insert(codeholder->data.end(), constant->data, constant->data + constant->size);
+		codeholder->dataRelocateInfo.push_back({ codepos, datapos });
+	}
 }
 
 void MachineCodeWriter::emitInstSSE_MR(int flags, std::initializer_list<int> opcode, MachineInst* inst)

@@ -50,14 +50,18 @@ void MachineCodeHolder::addFunction(IRFunction* func, const void* external)
 	functionTable.push_back(entry);
 }
 
-void MachineCodeHolder::relocate(void* codeDest, void* unwindDest) const
+void MachineCodeHolder::relocate(void* codeDest, void* dataDest, void* unwindDest) const
 {
-	memcpy(codeDest, code.data(), code.size());
-	memcpy(unwindDest, unwindData.data(), unwindData.size());
+	uint8_t* codeDest8 = (uint8_t*)codeDest;
+	uint8_t* dataDest8 = (uint8_t*)dataDest;
+	uint8_t* unwindDest8 = (uint8_t*)unwindDest;
+
+	memcpy(codeDest8, code.data(), code.size());
+	memcpy(dataDest8, data.data(), data.size());
+	memcpy(unwindDest8, unwindData.data(), unwindData.size());
 
 #ifndef WIN32
 	// Patch absolute address and size for each FDE entry in the .eh_frame
-	uint8_t* unwindDest8 = (uint8_t*)unwindDest;
 	for (const auto& entry : functionTable)
 	{
 		if (entry.beginUnwindData != entry.endUnwindData)
@@ -69,12 +73,10 @@ void MachineCodeHolder::relocate(void* codeDest, void* unwindDest) const
 	}
 #endif
 
-	uint8_t* d = (uint8_t*)codeDest;
-
 	for (const auto& entry : bbRelocateInfo)
 	{
 		int32_t value = (int32_t)(bbOffsets.find(entry.bb)->second - entry.pos - 4);
-		memcpy(d + entry.pos, &value, sizeof(int32_t));
+		memcpy(codeDest8 + entry.pos, &value, sizeof(int32_t));
 	}
 
 	for (const auto& entry : callRelocateInfo)
@@ -84,13 +86,19 @@ void MachineCodeHolder::relocate(void* codeDest, void* unwindDest) const
 		uint64_t value;
 		if (!funcEntry.external)
 		{
-			value = (ptrdiff_t)d + funcEntry.beginAddress;
+			value = (ptrdiff_t)codeDest8 + funcEntry.beginAddress;
 		}
 		else
 		{
 			value = (ptrdiff_t)funcEntry.external;
 		}
 
-		memcpy(d + entry.pos, &value, sizeof(uint64_t));
+		memcpy(codeDest8 + entry.pos, &value, sizeof(uint64_t));
+	}
+
+	for (const auto& entry : dataRelocateInfo)
+	{
+		int32_t ripoffset = (int32_t)(ptrdiff_t)((dataDest8 + entry.datapos) - (codeDest8 + entry.codepos + 4));
+		memcpy(codeDest8 + entry.codepos, &ripoffset, sizeof(int32_t));
 	}
 }

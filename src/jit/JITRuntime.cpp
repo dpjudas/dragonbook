@@ -168,19 +168,22 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 {
 #ifdef _WIN64
 	size_t codeSize = codeholder->codeSize();
+	size_t dataSize = codeholder->dataSize();
 	size_t unwindDataSize = codeholder->unwindDataSize();
 	size_t functionTableSize = codeholder->getFunctionTable().size() * sizeof(RUNTIME_FUNCTION);
 
 	// Make sure everything is 16 byte aligned
 	codeSize = (codeSize + 15) / 16 * 16;
+	dataSize = (dataSize + 15) / 16 * 16;
 	unwindDataSize = (unwindDataSize + 15) / 16 * 16;
 	functionTableSize = (functionTableSize + 15) / 16 * 16;
 
-	uint8_t* baseaddr = (uint8_t*)allocJitMemory(codeSize + unwindDataSize + functionTableSize);
-	uint8_t* unwindaddr = baseaddr + codeSize;
-	uint8_t* tableaddr = baseaddr + codeSize + unwindDataSize;
+	uint8_t* baseaddr = (uint8_t*)allocJitMemory(codeSize + dataSize + unwindDataSize + functionTableSize);
+	uint8_t* dataaddr = baseaddr + codeSize;
+	uint8_t* unwindaddr = baseaddr + codeSize + dataSize;
+	uint8_t* tableaddr = baseaddr + codeSize + dataSize + unwindDataSize;
 
-	codeholder->relocate(baseaddr, unwindaddr);
+	codeholder->relocate(baseaddr, dataaddr, unwindaddr);
 
 	RUNTIME_FUNCTION* table = (RUNTIME_FUNCTION*)tableaddr;
 	int tableIndex = 0;
@@ -189,9 +192,9 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 		table[tableIndex].BeginAddress = (DWORD)entry.beginAddress;
 		table[tableIndex].EndAddress = (DWORD)entry.endAddress;
 #ifndef __MINGW64__
-		table[tableIndex].UnwindInfoAddress = (DWORD)(codeSize + entry.beginUnwindData);
+		table[tableIndex].UnwindInfoAddress = (DWORD)(codeSize + dataSize + entry.beginUnwindData);
 #else
-		table[tableIndex].UnwindData = (DWORD)(codeSize + entry.beginUnwindData);
+		table[tableIndex].UnwindData = (DWORD)(codeSize + dataSize + entry.beginUnwindData);
 #endif
 		tableIndex++;
 	}
@@ -223,16 +226,19 @@ void JITRuntime::virtualFree(void* ptr)
 void JITRuntime::add(MachineCodeHolder* codeholder)
 {
 	size_t codeSize = codeholder->codeSize();
+	size_t dataSize = codeholder->dataSize();
 	size_t unwindDataSize = codeholder->unwindDataSize();
 
 	// Make sure everything is 16 byte aligned
 	codeSize = (codeSize + 15) / 16 * 16;
+	dataSize = (dataSize + 15) / 16 * 16;
 	unwindDataSize = (unwindDataSize + 15) / 16 * 16;
 
-	uint8_t* baseaddr = (uint8_t*)allocJitMemory(codeSize + unwindDataSize);
-	uint8_t* unwindaddr = baseaddr + codeSize;
+	uint8_t* baseaddr = (uint8_t*)allocJitMemory(codeSize + dataSize + unwindDataSize);
+	uint8_t* dataaddr = baseaddr + codeSize;
+	uint8_t* unwindaddr = baseaddr + codeSize + dataSize;
 
-	codeholder->relocate(baseaddr, unwindaddr);
+	codeholder->relocate(baseaddr, dataaddr, unwindaddr);
 
 	if (unwindDataSize > 0)
 	{

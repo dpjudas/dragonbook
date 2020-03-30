@@ -10,9 +10,10 @@ public:
 	void addFunction(IRFunction* func, const void* external);
 
 	size_t codeSize() const { return code.size(); }
+	size_t dataSize() const { return data.size(); }
 	size_t unwindDataSize() const { return unwindData.size(); }
 
-	void relocate(void* codeDest, void* unwindDest) const;
+	void relocate(void* codeDest, void* dataDest, void* unwindDest) const;
 
 	struct FunctionEntry
 	{
@@ -31,6 +32,7 @@ public:
 
 private:
 	std::vector<uint8_t> code;
+	std::vector<uint8_t> data;
 	std::vector<uint8_t> unwindData;
 	std::vector<FunctionEntry> functionTable;
 	std::map<IRFunction*, size_t> funcToTableIndex;
@@ -53,6 +55,16 @@ private:
 		IRFunction* func = nullptr;
 	};
 
+	struct DataRelocateEntry
+	{
+		DataRelocateEntry() = default;
+		DataRelocateEntry(size_t codepos, size_t datapos) : codepos(codepos), datapos(datapos) { }
+
+		size_t codepos = 0;
+		size_t datapos = 0;
+	};
+
+	std::vector<DataRelocateEntry> dataRelocateInfo;
 	std::vector<CallRelocateEntry> callRelocateInfo;
 	std::vector<BBRelocateEntry> bbRelocateInfo;
 	std::map<MachineBasicBlock*, size_t> bbOffsets;
