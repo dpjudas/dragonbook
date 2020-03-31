@@ -23,6 +23,8 @@ set(LIB_SOURCES
 	mc/MachineCodeHolder.h
 	mc/MachineCodeWriter.cpp
 	mc/MachineCodeWriter.h
+	mc/AssemblyWriter.cpp
+	mc/AssemblyWriter.h
 	mc/UnwindInfoUnix.cpp
 	mc/UnwindInfoUnix.h
 	mc/UnwindInfoWindows.cpp

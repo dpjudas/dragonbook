@@ -5,6 +5,9 @@
 #include "IRBasicBlock.h"
 #include "IRFunction.h"
 #include "mc/MachineInst.h"
+#include "mc/MachineInstSelection.h"
+#include "mc/RegisterAllocator.h"
+#include "mc/AssemblyWriter.h"
 
 IRContext::IRContext()
 {
@@ -25,6 +28,15 @@ IRContext::~IRContext()
 void IRContext::codegen()
 {
 	jit.compile(functions, globalVars, globalMappings);
+}
+
+std::string IRContext::getFunctionAssembly(IRFunction* func)
+{
+	MachineFunction* mcfunc = MachineInstSelection::codegen(func);
+	RegisterAllocator::run(func->context, mcfunc);
+	AssemblyWriter writer(mcfunc);
+	writer.codegen();
+	return writer.output.str();
 }
 
 void *IRContext::getPointerToFunction(IRFunction *func)

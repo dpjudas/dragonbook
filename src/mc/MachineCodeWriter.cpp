@@ -1,9 +1,6 @@
 
 #include "MachineCodeWriter.h"
 #include "MachineCodeHolder.h"
-#include "RegisterAllocator.h"
-#include "UnwindInfoWindows.h"
-#include "UnwindInfoUnix.h"
 
 void MachineCodeWriter::codegen()
 {

@@ -72,6 +72,8 @@ public:
 
 	int unwindOffset = -1;
 	MachineUnwindHint unwindHint = MachineUnwindHint::None;
+
+	std::string comment;
 };
 
 class MachineBasicBlock

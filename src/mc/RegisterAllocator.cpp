@@ -394,6 +394,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::load64 : MachineInstOpcode::loadsd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
+		inst->comment = "load vreg " + std::to_string(vregIndex);
 		emittedInstructions.push_back(inst);
 
 		physreg.vreg = vregIndex;
@@ -416,6 +417,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::mov64 : MachineInstOpcode::movsd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
+		inst->comment = "move vreg " + std::to_string(vregIndex);
 		emittedInstructions.push_back(inst);
 
 		physregs[vreg.physreg].vreg = -1;
@@ -452,6 +454,7 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 	inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::store64 : MachineInstOpcode::storesd;
 	inst->operands.push_back(dest);
 	inst->operands.push_back(src);
+	inst->comment = "save vreg " + std::to_string(vregIndex);
 	emittedInstructions.push_back(inst);
 
 	physreg.vreg = -1;

@@ -30,6 +30,8 @@ public:
 
 	void codegen();
 
+	std::string getFunctionAssembly(IRFunction* func);
+
 	void *getPointerToFunction(IRFunction *func);
 	void *getPointerToGlobal(IRGlobalVariable* variable);
 
