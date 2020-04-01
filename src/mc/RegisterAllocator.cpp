@@ -36,9 +36,7 @@ void RegisterAllocator::run()
 			reginfo[vregindex].physreg = pregIndex;
 			reginfo[pregIndex].vreg = (int)i;
 
-			auto& mru = mruPhys[(int)reginfo[pregIndex].cls];
-			mru.erase(reginfo[pregIndex].mruIt);
-			reginfo[pregIndex].mruIt = mru.insert(mru.end(), pregIndex);
+			setAsMostRecentlyUsed(pregIndex);
 		}
 	}
 
@@ -219,16 +217,17 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 void RegisterAllocator::createRegisterInfo()
 {
 	reginfo.resize(func->registers.size());
-
 	for (size_t i = 0; i < func->registers.size(); i++)
+	{
 		reginfo[i].cls = func->registers[i].cls;
+	}
 
 	for (int i = 0; i < (int)RegisterName::vregstart; i++)
 	{
 		if (reginfo[i].cls != MachineRegClass::reserved)
 		{
-			auto& mru = mruPhys[(int)reginfo[i].cls];
-			reginfo[i].mruIt = mru.insert(mru.end(), i);
+			RARegisterClass& cls = regclass[(int)reginfo[i].cls];
+			cls.mruIt[i] = cls.mru.insert(cls.mru.end(), i);
 		}
 	}
 }
@@ -254,52 +253,37 @@ void RegisterAllocator::usePhysRegister(MachineOperand& operand)
 {
 	int pregIndex = operand.registerIndex;
 	auto& physreg = reginfo[pregIndex];
-	auto& mru = mruPhys[(int)physreg.cls];
 
 	if (physreg.vreg != -1)
 	{
 		assignVirt2StackSlot(physreg.vreg);
 	}
 
-	// Move register to the back of the list of registers to pick from
-	mru.erase(physreg.mruIt);
-	physreg.mruIt = mru.insert(mru.end(), pregIndex);
+	setAsMostRecentlyUsed(pregIndex);
 }
 
 void RegisterAllocator::useVirtRegister(MachineOperand& operand)
 {
 	int vregIndex = operand.registerIndex;
 	auto& vreg = reginfo[vregIndex];
-	auto& mru = mruPhys[(int)vreg.cls];
 	if (vreg.spilled)
 	{
-		int pregIndex = mru.front();
+		int pregIndex = getLeastRecentlyUsed(vreg.cls);
 
 		auto& physreg = reginfo[pregIndex];
 		if (physreg.vreg != -1)
 			assignVirt2StackSlot(physreg.vreg);
 
-		mru.pop_front();
-		physreg.mruIt = mru.insert(mru.end(), pregIndex);
-
 		assignVirt2Phys(vregIndex, pregIndex);
-		operand.registerIndex = pregIndex;
 	}
-	else
-	{
-		// Move register to the back of the list of registers to pick from
-		int pregIndex = vreg.physreg;
-		auto& physreg = reginfo[pregIndex];
-		mru.erase(physreg.mruIt);
-		physreg.mruIt = mru.insert(mru.end(), pregIndex);
-		operand.registerIndex = pregIndex;
-	}
+
+	setAsMostRecentlyUsed(vreg.physreg);
+	operand.registerIndex = vreg.physreg;
 }
 
 void RegisterAllocator::killVirtRegister(int vregIndex)
 {
 	auto& vreg = reginfo[vregIndex];
-	auto& mru = mruPhys[(int)vreg.cls];
 	if (!vreg.spilled)
 	{
 		int pregIndex = vreg.physreg;
@@ -309,8 +293,7 @@ void RegisterAllocator::killVirtRegister(int vregIndex)
 		vreg.physreg = -1;
 		physreg.vreg = -1;
 
-		mru.erase(physreg.mruIt);
-		physreg.mruIt = mru.insert(mru.begin(), pregIndex);
+		setAsLeastRecentlyUsed(pregIndex);
 	}
 }
 
@@ -410,4 +393,23 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 
 	physreg.vreg = -1;
 	vreg.spilled = true;
+}
+
+void RegisterAllocator::setAsMostRecentlyUsed(int pregIndex)
+{
+	RARegisterClass& cls = regclass[(int)reginfo[pregIndex].cls];
+	cls.mru.erase(cls.mruIt[pregIndex]);
+	cls.mruIt[pregIndex] = cls.mru.insert(cls.mru.end(), pregIndex);
+}
+
+void RegisterAllocator::setAsLeastRecentlyUsed(int pregIndex)
+{
+	RARegisterClass& cls = regclass[(int)reginfo[pregIndex].cls];
+	cls.mru.erase(cls.mruIt[pregIndex]);
+	cls.mruIt[pregIndex] = cls.mru.insert(cls.mru.begin(), pregIndex);
+}
+
+int RegisterAllocator::getLeastRecentlyUsed(MachineRegClass cls)
+{
+	return regclass[(int)cls].mru.front();
 }

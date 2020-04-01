@@ -10,7 +10,12 @@ struct RARegisterInfo
 	int physreg = -1;
 	int stackoffset = -1;
 	bool spilled = true;
-	std::list<int>::iterator mruIt;
+};
+
+struct RARegisterClass
+{
+	std::list<int> mru;
+	std::list<int>::iterator mruIt[(int)RegisterName::vregstart];
 };
 
 class RegisterAllocator
@@ -41,11 +46,15 @@ private:
 	void assignVirt2Phys(int vregIndex, int pregIndex);
 	void assignVirt2StackSlot(int vregIndex);
 
+	void setAsMostRecentlyUsed(int pregIndex);
+	void setAsLeastRecentlyUsed(int pregIndex);
+	int getLeastRecentlyUsed(MachineRegClass cls);
+
 	IRContext* context;
 	MachineFunction* func;
 
 	std::vector<RARegisterInfo> reginfo;
-	std::list<int> mruPhys[2];
+	RARegisterClass regclass[2];
 
 	int nextStackOffset = 0;
 

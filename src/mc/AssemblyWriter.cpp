@@ -160,7 +160,7 @@ void AssemblyWriter::writeInst(const char* name, MachineInst* inst)
 		output << " ";
 		switch (operand.type)
 		{
-		case MachineOperandType::reg: output << regname[operand.registerIndex]; break;
+		case MachineOperandType::reg: output << (operand.registerIndex < 32 ? regname[operand.registerIndex] : "vreg"); break;
 		case MachineOperandType::constant: output << "constant"; break;
 		case MachineOperandType::stack: output << "rsp+" << (sfunc->stackSize - operand.stackOffset); break;
 		case MachineOperandType::imm: output << "imm"; break;
