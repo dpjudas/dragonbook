@@ -98,6 +98,22 @@ public:
 	int size;
 };
 
+enum class MachineRegClass
+{
+	gp,
+	xmm,
+	reserved
+};
+
+class MachineRegister
+{
+public:
+	MachineRegister() = default;
+	MachineRegister(MachineRegClass cls) : cls(cls) { }
+
+	MachineRegClass cls = MachineRegClass::reserved;
+};
+
 class MachineFunction
 {
 public:
@@ -106,6 +122,7 @@ public:
 	MachineBasicBlock* epilog = nullptr;
 	std::vector<MachineBasicBlock*> basicBlocks;
 	std::vector<MachineConstant> constants;
+	std::vector<MachineRegister> registers;
 	int stackSize = 0;
 };
 
@@ -143,5 +160,5 @@ enum class RegisterName : int
 	xmm13,
 	xmm14,
 	xmm15,
-	vregstart = 1024
+	vregstart = 128
 };

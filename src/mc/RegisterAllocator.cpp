@@ -9,7 +9,7 @@ void RegisterAllocator::run(IRContext* context, MachineFunction* func)
 
 void RegisterAllocator::run()
 {
-	createPhysRegisters();
+	createRegisterInfo();
 
 	//static const RegisterName unixregvars[] = { RegisterName::rdi, RegisterName::rsi, RegisterName::rdx, RegisterName::rcx, RegisterName::r8, RegisterName::r9 };
 	static const RegisterName win64regvars[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
@@ -17,36 +17,29 @@ void RegisterAllocator::run()
 	int argoffset = -8 * 8; // 8 pushed registers
 
 	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
-	for (size_t i = 0; i < functype->args.size(); i++)
+	for (int i = 0; i < (int)functype->args.size(); i++)
 	{
-		IRType* type = functype->args[i];
-
 		argoffset -= 8;
 
-		VirtualRegister vreg;
-		vreg.type = (isFloat(type) || isDouble(type)) ? RegType::xmm : RegType::gp;
-		vreg.stackoffset = argoffset;
+		int vregindex = (int)RegisterName::vregstart + i;
+		reginfo[vregindex].stackoffset = argoffset;
 
 		if (i < 4)
 		{
-			vreg.spilled = false;
-
 			int pregIndex;
-			if (vreg.type == RegType::gp)
+			if (reginfo[vregindex].cls == MachineRegClass::gp)
 				pregIndex = (int)win64regvars[i];
 			else
 				pregIndex = (int)RegisterName::xmm0 + (int)i;
-			vreg.physreg = pregIndex;
 
-			auto& physreg = physregs[pregIndex];
-			physreg.vreg = (int)i;
+			reginfo[vregindex].spilled = false;
+			reginfo[vregindex].physreg = pregIndex;
+			reginfo[pregIndex].vreg = (int)i;
 
-			auto& mru = mruPhys[(int)physreg.type];
-			mru.erase(physreg.mruIt);
-			physreg.mruIt = mru.insert(mru.end(), pregIndex);
+			auto& mru = mruPhys[(int)reginfo[pregIndex].cls];
+			mru.erase(reginfo[pregIndex].mruIt);
+			reginfo[pregIndex].mruIt = mru.insert(mru.end(), pregIndex);
 		}
-
-		vregs.push_back(vreg);
 	}
 
 	for (size_t i = 0; i < func->basicBlocks.size(); i++)
@@ -223,74 +216,34 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 	}
 }
 
-void RegisterAllocator::createPhysRegisters()
+void RegisterAllocator::createRegisterInfo()
 {
-	physregs.clear();
+	reginfo.resize(func->registers.size());
 
-	PhysicalRegister reserved;
-	reserved.type = RegType::reserved;
+	for (size_t i = 0; i < func->registers.size(); i++)
+		reginfo[i].cls = func->registers[i].cls;
 
-	PhysicalRegister gp;
-	gp.type = RegType::gp;
-	physregs.push_back(gp); // rax
-	physregs.push_back(gp); // rcx
-	physregs.push_back(gp); // rdx
-	physregs.push_back(gp); // rbx
-	physregs.push_back(reserved); // rsp
-	physregs.push_back(gp); // rbp
-	physregs.push_back(gp); // rsi
-	physregs.push_back(gp); // rdi
-	physregs.push_back(gp); // r8
-	physregs.push_back(gp); // r9
-	physregs.push_back(gp); // r10
-	physregs.push_back(gp); // r11
-	physregs.push_back(gp); // r12
-	physregs.push_back(gp); // r13
-	physregs.push_back(gp); // r14
-	physregs.push_back(gp); // r15
-
-	size_t numGP = physregs.size();
-
-	PhysicalRegister xmm;
-	xmm.type = RegType::xmm;
-	physregs.push_back(xmm); // xmm0
-	physregs.push_back(xmm); // xmm1
-	physregs.push_back(xmm); // xmm2
-	physregs.push_back(xmm); // xmm3
-	physregs.push_back(xmm); // xmm4
-	physregs.push_back(xmm); // xmm5
-	physregs.push_back(xmm); // xmm6
-	physregs.push_back(xmm); // xmm7
-	physregs.push_back(xmm); // xmm8
-	physregs.push_back(xmm); // xmm9
-	physregs.push_back(xmm); // xmm10
-	physregs.push_back(xmm); // xmm11
-	physregs.push_back(xmm); // xmm12
-	physregs.push_back(xmm); // xmm13
-	physregs.push_back(xmm); // xmm14
-	physregs.push_back(xmm); // xmm15
-
-	for (int i = 0; i < physregs.size(); i++)
+	for (int i = 0; i < (int)RegisterName::vregstart; i++)
 	{
-		if (physregs[i].type != RegType::reserved)
+		if (reginfo[i].cls != MachineRegClass::reserved)
 		{
-			auto& mru = mruPhys[(int)physregs[i].type];
-			physregs[i].mruIt = mru.insert(mru.end(), i);
+			auto& mru = mruPhys[(int)reginfo[i].cls];
+			reginfo[i].mruIt = mru.insert(mru.end(), i);
 		}
 	}
 }
 
 void RegisterAllocator::setAllToStack()
 {
-	for (size_t i = 0; i < vregs.size(); i++)
+	for (RARegisterInfo &entry : reginfo)
 	{
-		vregs[i].spilled = true;
+		entry.spilled = true;
 	}
 }
 
 void RegisterAllocator::assignAllToStack()
 {
-	for (size_t i = 0; i < vregs.size(); i++)
+	for (size_t i = (int)RegisterName::vregstart; i < reginfo.size(); i++)
 	{
 		int vregIndex = (int)i;
 		assignVirt2StackSlot(vregIndex);
@@ -300,8 +253,8 @@ void RegisterAllocator::assignAllToStack()
 void RegisterAllocator::usePhysRegister(MachineOperand& operand)
 {
 	int pregIndex = operand.registerIndex;
-	auto& physreg = physregs[pregIndex];
-	auto& mru = mruPhys[(int)physreg.type];
+	auto& physreg = reginfo[pregIndex];
+	auto& mru = mruPhys[(int)physreg.cls];
 
 	if (physreg.vreg != -1)
 	{
@@ -315,16 +268,14 @@ void RegisterAllocator::usePhysRegister(MachineOperand& operand)
 
 void RegisterAllocator::useVirtRegister(MachineOperand& operand)
 {
-	int vregIndex = operand.registerIndex - (int)RegisterName::vregstart;
-	if (vregs.size() <= (size_t)vregIndex)
-		vregs.resize((size_t)vregIndex + 1);
-	auto& vreg = vregs[vregIndex];
-	auto& mru = mruPhys[(int)vreg.type];
+	int vregIndex = operand.registerIndex;
+	auto& vreg = reginfo[vregIndex];
+	auto& mru = mruPhys[(int)vreg.cls];
 	if (vreg.spilled)
 	{
 		int pregIndex = mru.front();
 
-		auto& physreg = physregs[pregIndex];
+		auto& physreg = reginfo[pregIndex];
 		if (physreg.vreg != -1)
 			assignVirt2StackSlot(physreg.vreg);
 
@@ -338,7 +289,7 @@ void RegisterAllocator::useVirtRegister(MachineOperand& operand)
 	{
 		// Move register to the back of the list of registers to pick from
 		int pregIndex = vreg.physreg;
-		auto& physreg = physregs[pregIndex];
+		auto& physreg = reginfo[pregIndex];
 		mru.erase(physreg.mruIt);
 		physreg.mruIt = mru.insert(mru.end(), pregIndex);
 		operand.registerIndex = pregIndex;
@@ -347,12 +298,12 @@ void RegisterAllocator::useVirtRegister(MachineOperand& operand)
 
 void RegisterAllocator::killVirtRegister(int vregIndex)
 {
-	auto& vreg = vregs[vregIndex];
-	auto& mru = mruPhys[(int)vreg.type];
+	auto& vreg = reginfo[vregIndex];
+	auto& mru = mruPhys[(int)vreg.cls];
 	if (!vreg.spilled)
 	{
 		int pregIndex = vreg.physreg;
-		auto& physreg = physregs[pregIndex];
+		auto& physreg = reginfo[pregIndex];
 
 		vreg.spilled = true;
 		vreg.physreg = -1;
@@ -365,8 +316,8 @@ void RegisterAllocator::killVirtRegister(int vregIndex)
 
 void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 {
-	auto& vreg = vregs[vregIndex];
-	auto& physreg = physregs[pregIndex];
+	auto& vreg = reginfo[vregIndex];
+	auto& physreg = reginfo[pregIndex];
 
 	if (physreg.vreg != -1 && physreg.vreg != vregIndex)
 	{
@@ -391,7 +342,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		src.stackOffset = vreg.stackoffset;
 
 		auto inst = context->newMachineInst();
-		inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::load64 : MachineInstOpcode::loadsd;
+		inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::load64 : MachineInstOpcode::loadsd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
 		inst->comment = "load vreg " + std::to_string(vregIndex);
@@ -414,13 +365,13 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		src.registerIndex = vreg.physreg;
 
 		auto inst = context->newMachineInst();
-		inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::mov64 : MachineInstOpcode::movsd;
+		inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::mov64 : MachineInstOpcode::movsd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
 		inst->comment = "move vreg " + std::to_string(vregIndex);
 		emittedInstructions.push_back(inst);
 
-		physregs[vreg.physreg].vreg = -1;
+		reginfo[vreg.physreg].vreg = -1;
 		physreg.vreg = vregIndex;
 		vreg.physreg = pregIndex;
 	}
@@ -428,11 +379,11 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 
 void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 {
-	auto& vreg = vregs[vregIndex];
+	auto& vreg = reginfo[vregIndex];
 	if (vreg.spilled)
 		return;
 
-	auto& physreg = physregs[vreg.physreg];
+	auto& physreg = reginfo[vreg.physreg];
 
 	if (vreg.stackoffset == -1)
 	{
@@ -451,7 +402,7 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 	src.registerIndex = vreg.physreg;
 
 	auto inst = context->newMachineInst();
-	inst->opcode = vreg.type == RegType::gp ? MachineInstOpcode::store64 : MachineInstOpcode::storesd;
+	inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::store64 : MachineInstOpcode::storesd;
 	inst->operands.push_back(dest);
 	inst->operands.push_back(src);
 	inst->comment = "save vreg " + std::to_string(vregIndex);

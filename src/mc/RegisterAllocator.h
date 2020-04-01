@@ -3,26 +3,13 @@
 #include "MachineInst.h"
 #include <list>
 
-enum class RegType
+struct RARegisterInfo
 {
-	gp,
-	xmm,
-	reserved
-};
-
-struct VirtualRegister
-{
-	RegType type = RegType::gp;
-	int stackoffset = -1;
-	int physreg = -1;
-	bool spilled = true;
-};
-
-struct PhysicalRegister
-{
-	RegType type;
+	MachineRegClass cls = MachineRegClass::reserved;
 	int vreg = -1;
-
+	int physreg = -1;
+	int stackoffset = -1;
+	bool spilled = true;
 	std::list<int>::iterator mruIt;
 };
 
@@ -41,7 +28,7 @@ private:
 	bool isFloat(IRType* type) const { return dynamic_cast<IRFloatType*>(type); }
 	bool isDouble(IRType* type) const { return dynamic_cast<IRDoubleType*>(type); }
 
-	void createPhysRegisters();
+	void createRegisterInfo();
 
 	void usePhysRegister(MachineOperand& operand);
 
@@ -57,8 +44,7 @@ private:
 	IRContext* context;
 	MachineFunction* func;
 
-	std::vector<VirtualRegister> vregs;
-	std::vector<PhysicalRegister> physregs;
+	std::vector<RARegisterInfo> reginfo;
 	std::list<int> mruPhys[2];
 
 	int nextStackOffset = 0;

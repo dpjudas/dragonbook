@@ -8,6 +8,39 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 	selection.mfunc->type = dynamic_cast<IRFunctionType*>(sfunc->type);
 	selection.mfunc->prolog = sfunc->context->newMachineBasicBlock();
 	selection.mfunc->epilog = sfunc->context->newMachineBasicBlock();
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // rax
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // rcx
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // rdx
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // rbx
+	selection.mfunc->registers.push_back(MachineRegClass::reserved); // rsp
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // rbp
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // rsi
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // rdi
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // r8
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // r9
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // r10
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // r11
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // r12
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // r13
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // r14
+	selection.mfunc->registers.push_back(MachineRegClass::gp); // r15
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm0
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm1
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm2
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm3
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm4
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm5
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm6
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm7
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm8
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm9
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm10
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm11
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm12
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm13
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm14
+	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm15
+	selection.mfunc->registers.resize((size_t)RegisterName::vregstart);
 
 	for (IRValue* value : sfunc->args)
 	{
@@ -61,7 +94,7 @@ void MachineInstSelection::inst(IRInstStore* node)
 	bool isMemToMem = isConstantFP(node->operand1) || isGlobalVariable(node->operand1);
 	if (isMemToMem)
 	{
-		auto srcreg = newTempReg();
+		auto srcreg = newTempReg(dataSizeType < 2 ? MachineRegClass::xmm : MachineRegClass::gp);
 
 		auto loadinst = context->newMachineInst();
 		loadinst->opcode = loadOps[dataSizeType];
@@ -511,7 +544,7 @@ void MachineInstSelection::inst(IRInstUIToFP* node)
 	}
 	else if (srcDataSizeType != 2) // zero extend required
 	{
-		auto tmp = newTempReg();
+		auto tmp = newTempReg(MachineRegClass::gp);
 
 		{
 			auto inst = context->newMachineInst();
@@ -567,7 +600,7 @@ void MachineInstSelection::inst(IRInstSIToFP* node)
 	}
 	else if (srcDataSizeType != dstDataSizeType + 2) // sign extend required
 	{
-		auto tmp = newTempReg();
+		auto tmp = newTempReg(MachineRegClass::gp);
 
 		static const int bits[] = { 64, 32, 64, 32, 16, 8 };
 		int dstbits = bits[dstDataSizeType];
@@ -944,7 +977,7 @@ void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpco
 	MachineOperand src1;
 	if (isConstant(node->operand1))
 	{
-		src1 = newTempReg();
+		src1 = newTempReg(dataSizeType < 2 ? MachineRegClass::xmm : MachineRegClass::gp);
 
 		auto inst = context->newMachineInst();
 		inst->opcode = movOps[dataSizeType];
@@ -1054,7 +1087,7 @@ MachineOperand MachineInstSelection::newReg(IRValue* node)
 {
 	MachineOperand operand;
 	operand.type = MachineOperandType::reg;
-	operand.registerIndex = nextRegIndex++;
+	operand.registerIndex = createVirtReg(getDataSizeType(node->type) < 2 ? MachineRegClass::xmm : MachineRegClass::gp);
 	instRegister[node] = operand;
 	return operand;
 }
@@ -1067,12 +1100,19 @@ MachineOperand MachineInstSelection::newPhysReg(RegisterName name)
 	return operand;
 }
 
-MachineOperand MachineInstSelection::newTempReg()
+MachineOperand MachineInstSelection::newTempReg(MachineRegClass cls)
 {
 	MachineOperand operand;
 	operand.type = MachineOperandType::reg;
-	operand.registerIndex = nextRegIndex++;
+	operand.registerIndex = createVirtReg(cls);
 	return operand;
+}
+
+int MachineInstSelection::createVirtReg(MachineRegClass cls)
+{
+	int registerIndex = (int)mfunc->registers.size();
+	mfunc->registers.push_back(cls);
+	return registerIndex;
 }
 
 MachineOperand MachineInstSelection::newConstant(uint64_t address)

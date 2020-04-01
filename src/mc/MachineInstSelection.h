@@ -103,7 +103,9 @@ private:
 	MachineOperand newConstant(const void *data, int size);
 	MachineOperand newImm(uint64_t imm);
 	MachineOperand newPhysReg(RegisterName name);
-	MachineOperand newTempReg();
+	MachineOperand newTempReg(MachineRegClass cls);
+
+	int createVirtReg(MachineRegClass cls);
 
 	IRContext* context;
 	IRFunction* sfunc;
@@ -112,5 +114,4 @@ private:
 	std::map<IRBasicBlock*, MachineBasicBlock*> bbMap;
 
 	std::map<IRValue*, MachineOperand> instRegister;
-	int nextRegIndex = (int)RegisterName::vregstart;
 };
