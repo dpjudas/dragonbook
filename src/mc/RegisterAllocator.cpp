@@ -34,7 +34,7 @@ void RegisterAllocator::run()
 
 			reginfo[vregindex].spilled = false;
 			reginfo[vregindex].physreg = pregIndex;
-			reginfo[pregIndex].vreg = (int)i;
+			reginfo[pregIndex].vreg = vregindex;
 
 			setAsMostRecentlyUsed(pregIndex);
 		}
@@ -45,6 +45,21 @@ void RegisterAllocator::run()
 		MachineBasicBlock* bb = func->basicBlocks[i];
 		for (MachineInst* inst : bb->code)
 		{
+			if (inst->opcode == MachineInstOpcode::call)
+			{
+				//std::vector<RegisterName> volatileRegsUnix = { RegisterName::rax, RegisterName::rcx, RegisterName::rdx, RegisterName::rdi, RegisterName::rsi, RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5 };
+				std::vector<RegisterName> volatileRegsWin64 = { RegisterName::rax, RegisterName::rcx, RegisterName::rdx, RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5 };
+				for (RegisterName regName : volatileRegsWin64)
+				{
+					int pregIndex = (int)regName;
+					if (reginfo[pregIndex].vreg != -1)
+					{
+						assignVirt2StackSlot(reginfo[pregIndex].vreg);
+						setAsLeastRecentlyUsed(pregIndex);
+					}
+				}
+			}
+
 			for (MachineOperand& operand : inst->operands)
 			{
 				if (operand.type == MachineOperandType::reg)
