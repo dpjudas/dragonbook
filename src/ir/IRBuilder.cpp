@@ -157,11 +157,6 @@ IRInstURem *IRBuilder::CreateURem(IRValue *a, IRValue *b)
 	return add<IRInstURem>(a, b);
 }
 
-IRInstFRem *IRBuilder::CreateFRem(IRValue *a, IRValue *b)
-{
-	return add<IRInstFRem>(a, b);
-}
-
 IRInstShl *IRBuilder::CreateShl(IRValue *a, IRValue *b)
 {
 	return add<IRInstShl>(a, b);

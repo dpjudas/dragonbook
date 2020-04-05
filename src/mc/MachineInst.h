@@ -13,6 +13,8 @@ enum class MachineInstOpcode
 	loadss, loadsd, load64, load32, load16, load8, // mov reg,ptr
 	storess, storesd, store64, store32, store16, store8, // mov ptr,reg
 	movss, movsd, mov64, mov32, mov16, mov8,
+	movsx8_16, movsx8_32, movsx8_64, movsx16_32, movsx16_64, movsx32_64,
+	movzx8_16, movzx8_32, movzx8_64, movzx16_32, movzx16_64,
 	addss, addsd, add64, add32, add16, add8,
 	subss, subsd, sub64, sub32, sub16, sub8,
 	not64, not32, not16, not8,
@@ -24,7 +26,6 @@ enum class MachineInstOpcode
 	xorpd, xorps, xor64, xor32, xor16, xor8,
 	mulss, mulsd, imul64, imul32, imul16, imul8,
 	divss, divsd, idiv64, idiv32, idiv16, idiv8,
-	mul64, mul32, mul16, mul8,
 	div64, div32, div16, div8,
 	ucomisd, ucomiss, cmp64, cmp32, cmp16, cmp8,
 	setl, setb, seta, setg, setle, setbe, setae, setge, sete, setne,

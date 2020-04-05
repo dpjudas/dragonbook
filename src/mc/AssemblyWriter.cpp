@@ -48,6 +48,17 @@ void AssemblyWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::mov32: mov32(inst); break;
 	case MachineInstOpcode::mov16: mov16(inst); break;
 	case MachineInstOpcode::mov8: mov8(inst); break;
+	case MachineInstOpcode::movsx8_16: movsx8_16(inst); break;
+	case MachineInstOpcode::movsx8_32: movsx8_32(inst); break;
+	case MachineInstOpcode::movsx8_64: movsx8_64(inst); break;
+	case MachineInstOpcode::movsx16_32: movsx16_32(inst); break;
+	case MachineInstOpcode::movsx16_64: movsx16_64(inst); break;
+	case MachineInstOpcode::movsx32_64: movsx32_64(inst); break;
+	case MachineInstOpcode::movzx8_16: movzx8_16(inst); break;
+	case MachineInstOpcode::movzx8_32: movzx8_32(inst); break;
+	case MachineInstOpcode::movzx8_64: movzx8_64(inst); break;
+	case MachineInstOpcode::movzx16_32: movzx16_32(inst); break;
+	case MachineInstOpcode::movzx16_64: movzx16_64(inst); break;
 	case MachineInstOpcode::addss: addss(inst); break;
 	case MachineInstOpcode::addsd: addsd(inst); break;
 	case MachineInstOpcode::add64: add64(inst); break;
@@ -102,10 +113,6 @@ void AssemblyWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::idiv32: idiv32(inst); break;
 	case MachineInstOpcode::idiv16: idiv16(inst); break;
 	case MachineInstOpcode::idiv8: idiv8(inst); break;
-	case MachineInstOpcode::mul64: mul64(inst); break;
-	case MachineInstOpcode::mul32: mul32(inst); break;
-	case MachineInstOpcode::mul16: mul16(inst); break;
-	case MachineInstOpcode::mul8: mul8(inst); break;
 	case MachineInstOpcode::div64: div64(inst); break;
 	case MachineInstOpcode::div32: div32(inst); break;
 	case MachineInstOpcode::div16: div16(inst); break;
@@ -277,6 +284,61 @@ void AssemblyWriter::mov16(MachineInst* inst)
 void AssemblyWriter::mov8(MachineInst* inst)
 {
 	writeInst("mov8", inst);
+}
+
+void AssemblyWriter::movsx8_16(MachineInst* inst)
+{
+	writeInst("movsx8_16", inst);
+}
+
+void AssemblyWriter::movsx8_32(MachineInst* inst)
+{
+	writeInst("movsx8_32", inst);
+}
+
+void AssemblyWriter::movsx8_64(MachineInst* inst)
+{
+	writeInst("movsx8_64", inst);
+}
+
+void AssemblyWriter::movsx16_32(MachineInst* inst)
+{
+	writeInst("movsx16_32", inst);
+}
+
+void AssemblyWriter::movsx16_64(MachineInst* inst)
+{
+	writeInst("movsx16_64", inst);
+}
+
+void AssemblyWriter::movsx32_64(MachineInst* inst)
+{
+	writeInst("movsx32_64", inst);
+}
+
+void AssemblyWriter::movzx8_16(MachineInst* inst)
+{
+	writeInst("movzx8_16", inst);
+}
+
+void AssemblyWriter::movzx8_32(MachineInst* inst)
+{
+	writeInst("movzx8_32", inst);
+}
+
+void AssemblyWriter::movzx8_64(MachineInst* inst)
+{
+	writeInst("movzx8_64", inst);
+}
+
+void AssemblyWriter::movzx16_32(MachineInst* inst)
+{
+	writeInst("movzx16_32", inst);
+}
+
+void AssemblyWriter::movzx16_64(MachineInst* inst)
+{
+	writeInst("movzx16_64", inst);
 }
 
 void AssemblyWriter::addss(MachineInst* inst)
@@ -547,26 +609,6 @@ void AssemblyWriter::idiv16(MachineInst* inst)
 void AssemblyWriter::idiv8(MachineInst* inst)
 {
 	writeInst("idiv8", inst);
-}
-
-void AssemblyWriter::mul64(MachineInst* inst)
-{
-	writeInst("mul64", inst);
-}
-
-void AssemblyWriter::mul32(MachineInst* inst)
-{
-	writeInst("mul32", inst);
-}
-
-void AssemblyWriter::mul16(MachineInst* inst)
-{
-	writeInst("mul16", inst);
-}
-
-void AssemblyWriter::mul8(MachineInst* inst)
-{
-	writeInst("mul8", inst);
 }
 
 void AssemblyWriter::div64(MachineInst* inst)

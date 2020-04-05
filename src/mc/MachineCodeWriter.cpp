@@ -51,6 +51,17 @@ void MachineCodeWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::mov32: mov32(inst); break;
 	case MachineInstOpcode::mov16: mov16(inst); break;
 	case MachineInstOpcode::mov8: mov8(inst); break;
+	case MachineInstOpcode::movsx8_16: movsx8_16(inst); break;
+	case MachineInstOpcode::movsx8_32: movsx8_32(inst); break;
+	case MachineInstOpcode::movsx8_64: movsx8_64(inst); break;
+	case MachineInstOpcode::movsx16_32: movsx16_32(inst); break;
+	case MachineInstOpcode::movsx16_64: movsx16_64(inst); break;
+	case MachineInstOpcode::movsx32_64: movsx32_64(inst); break;
+	case MachineInstOpcode::movzx8_16: movzx8_16(inst); break;
+	case MachineInstOpcode::movzx8_32: movzx8_32(inst); break;
+	case MachineInstOpcode::movzx8_64: movzx8_64(inst); break;
+	case MachineInstOpcode::movzx16_32: movzx16_32(inst); break;
+	case MachineInstOpcode::movzx16_64: movzx16_64(inst); break;
 	case MachineInstOpcode::addss: addss(inst); break;
 	case MachineInstOpcode::addsd: addsd(inst); break;
 	case MachineInstOpcode::add64: add64(inst); break;
@@ -105,10 +116,6 @@ void MachineCodeWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::idiv32: idiv32(inst); break;
 	case MachineInstOpcode::idiv16: idiv16(inst); break;
 	case MachineInstOpcode::idiv8: idiv8(inst); break;
-	case MachineInstOpcode::mul64: mul64(inst); break;
-	case MachineInstOpcode::mul32: mul32(inst); break;
-	case MachineInstOpcode::mul16: mul16(inst); break;
-	case MachineInstOpcode::mul8: mul8(inst); break;
 	case MachineInstOpcode::div64: div64(inst); break;
 	case MachineInstOpcode::div32: div32(inst); break;
 	case MachineInstOpcode::div16: div16(inst); break;
@@ -292,6 +299,61 @@ void MachineCodeWriter::mov8(MachineInst* inst)
 		emitInstOI(OpFlags::Rex, 0xb0, 8, inst);
 	else
 		emitInstRM(OpFlags::Rex, 0x8a, inst);
+}
+
+void MachineCodeWriter::movsx8_16(MachineInst* inst)
+{
+	emitInstRM(0, { 0x0f, 0xbe }, inst);
+}
+
+void MachineCodeWriter::movsx8_32(MachineInst* inst)
+{
+	emitInstRM(OpFlags::SizeOverride, { 0x0f, 0xbe }, inst);
+}
+
+void MachineCodeWriter::movsx8_64(MachineInst* inst)
+{
+	emitInstRM(OpFlags::RexW, { 0x0f, 0xbe }, inst);
+}
+
+void MachineCodeWriter::movsx16_32(MachineInst* inst)
+{
+	emitInstRM(0, { 0x0f, 0xbf }, inst);
+}
+
+void MachineCodeWriter::movsx16_64(MachineInst* inst)
+{
+	emitInstRM(OpFlags::RexW, { 0x0f, 0xbf }, inst);
+}
+
+void MachineCodeWriter::movsx32_64(MachineInst* inst)
+{
+	emitInstRM(OpFlags::RexW, { 0x63 }, inst);
+}
+
+void MachineCodeWriter::movzx8_16(MachineInst* inst)
+{
+	emitInstRM(0, { 0x0f, 0xb6 }, inst);
+}
+
+void MachineCodeWriter::movzx8_32(MachineInst* inst)
+{
+	emitInstRM(OpFlags::SizeOverride, { 0x0f, 0xb6 }, inst);
+}
+
+void MachineCodeWriter::movzx8_64(MachineInst* inst)
+{
+	emitInstRM(OpFlags::RexW, { 0x0f, 0xb6 }, inst);
+}
+
+void MachineCodeWriter::movzx16_32(MachineInst* inst)
+{
+	emitInstRM(0, { 0x0f, 0xb7 }, inst);
+}
+
+void MachineCodeWriter::movzx16_64(MachineInst* inst)
+{
+	emitInstRM(OpFlags::RexW, { 0x0f, 0xb7 }, inst);
 }
 
 void MachineCodeWriter::addss(MachineInst* inst)
@@ -660,30 +722,6 @@ void MachineCodeWriter::idiv8(MachineInst* inst)
 {
 	// Doesn't have an immediate divide. Always uses AX.
 	emitInstM(OpFlags::Rex, 0xf6, 7, inst);
-}
-
-void MachineCodeWriter::mul64(MachineInst* inst)
-{
-	// Doesn't have an immediate multiply. Always uses RAX and RDX.
-	emitInstM(OpFlags::RexW, 0xf7, 4, inst);
-}
-
-void MachineCodeWriter::mul32(MachineInst* inst)
-{
-	// Doesn't have an immediate multiply. Always uses EAX and EDX.
-	emitInstM(0, 0xf7, 4, inst);
-}
-
-void MachineCodeWriter::mul16(MachineInst* inst)
-{
-	// Doesn't have an immediate multiply. Always uses AX and DX.
-	emitInstM(OpFlags::SizeOverride, 0xf7, 4, inst);
-}
-
-void MachineCodeWriter::mul8(MachineInst* inst)
-{
-	// Doesn't have an immediate multiply. Always uses AX.
-	emitInstM(OpFlags::Rex, 0xf6, 4, inst);
 }
 
 void MachineCodeWriter::div64(MachineInst* inst)

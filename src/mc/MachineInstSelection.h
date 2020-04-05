@@ -26,7 +26,6 @@ private:
 	void inst(IRInstFDiv* node) override;
 	void inst(IRInstSRem* node) override;
 	void inst(IRInstURem* node) override;
-	void inst(IRInstFRem* node) override;
 	void inst(IRInstShl* node) override;
 	void inst(IRInstAShr* node) override;
 	void inst(IRInstICmpSLT* node) override;
@@ -87,6 +86,7 @@ private:
 
 	void simpleCompareInst(IRInstBinary* node, MachineInstOpcode opSet);
 	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
+	void divBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps, bool remainder);
 	void pushValueOperand(MachineInst* inst, IRValue* operand, int dataSizeType);
 	void pushBBOperand(MachineInst* inst, IRBasicBlock* bb);
 

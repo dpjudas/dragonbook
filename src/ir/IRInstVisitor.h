@@ -17,7 +17,6 @@ class IRInstUDiv;
 class IRInstFDiv;
 class IRInstSRem;
 class IRInstURem;
-class IRInstFRem;
 class IRInstShl;
 class IRInstAShr;
 class IRInstICmpSLT;
@@ -77,7 +76,6 @@ public:
 	virtual void inst(IRInstFDiv *node) = 0;
 	virtual void inst(IRInstSRem *node) = 0;
 	virtual void inst(IRInstURem *node) = 0;
-	virtual void inst(IRInstFRem *node) = 0;
 	virtual void inst(IRInstShl *node) = 0;
 	virtual void inst(IRInstAShr *node) = 0;
 	virtual void inst(IRInstICmpSLT *node) = 0;

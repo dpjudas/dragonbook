@@ -36,6 +36,17 @@ private:
 	void mov32(MachineInst* inst);
 	void mov16(MachineInst* inst);
 	void mov8(MachineInst* inst);
+	void movsx8_16(MachineInst* inst);
+	void movsx8_32(MachineInst* inst);
+	void movsx8_64(MachineInst* inst);
+	void movsx16_32(MachineInst* inst);
+	void movsx16_64(MachineInst* inst);
+	void movsx32_64(MachineInst* inst);
+	void movzx8_16(MachineInst* inst);
+	void movzx8_32(MachineInst* inst);
+	void movzx8_64(MachineInst* inst);
+	void movzx16_32(MachineInst* inst);
+	void movzx16_64(MachineInst* inst);
 	void addss(MachineInst* inst);
 	void addsd(MachineInst* inst);
 	void add64(MachineInst* inst);
@@ -90,10 +101,6 @@ private:
 	void idiv32(MachineInst* inst);
 	void idiv16(MachineInst* inst);
 	void idiv8(MachineInst* inst);
-	void mul64(MachineInst* inst);
-	void mul32(MachineInst* inst);
-	void mul16(MachineInst* inst);
-	void mul8(MachineInst* inst);
 	void div64(MachineInst* inst);
 	void div32(MachineInst* inst);
 	void div16(MachineInst* inst);

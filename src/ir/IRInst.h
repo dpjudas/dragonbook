@@ -53,7 +53,6 @@ class IRInstFDiv : public IRInstBinary { public: using IRInstBinary::IRInstBinar
 
 class IRInstSRem : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 class IRInstURem : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstFRem : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
 class IRInstShl : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 class IRInstAShr : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };

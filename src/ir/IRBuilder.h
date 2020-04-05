@@ -53,7 +53,6 @@ public:
 
 	IRInstSRem *CreateSRem(IRValue *, IRValue *);
 	IRInstURem *CreateURem(IRValue *, IRValue *);
-	IRInstFRem *CreateFRem(IRValue *, IRValue *);
 
 	IRInstShl *CreateShl(IRValue *, IRValue *);
 	IRInstAShr *CreateAShr(IRValue *, IRValue *);
