@@ -181,6 +181,34 @@ private:
 	void emitInstSSE_RM(int flags, std::initializer_list<int> opcode, MachineInst* inst);
 	void emitInstSSE_MR(int flags, std::initializer_list<int> opcode, MachineInst* inst);
 
+	struct X64Instruction
+	{
+		// ModR/M:
+		int mod = 0;
+		int modreg = 0;
+		int rm = 0;
+
+		// SIB:
+		int scale = 0;
+		int index = 0;
+		int base = 0;
+		bool sib = false;
+
+		// Disp:
+		int32_t disp = 0;
+		int dispsize = 0;
+
+		// Immediate:
+		uint64_t imm;
+		int immsize = 0;
+	};
+
+	void setM(X64Instruction& x64inst, const MachineOperand& operand);
+	void setI(X64Instruction& x64inst, int immsize, const MachineOperand& operand);
+	void setR(X64Instruction& x64inst, const MachineOperand& operand);
+	void setR(X64Instruction& x64inst, int modopcode);
+
+	void writeInst(int flags, std::initializer_list<int> opcode, const X64Instruction& x64inst);
 	void writeOpcode(int flags, std::initializer_list<int> opcode, int rexR, int rexX, int rexB);
 	void writeModRM(int mod, int modreg, int rm);
 	void writeSIB(int scale, int index, int base);
