@@ -55,6 +55,7 @@ class IRInstSRem : public IRInstBinary { public: using IRInstBinary::IRInstBinar
 class IRInstURem : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
 class IRInstShl : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstLShr : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor* visitor) { visitor->inst(this); } };
 class IRInstAShr : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
 class IRInstICmpSLT : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };

@@ -162,6 +162,11 @@ IRInstShl *IRBuilder::CreateShl(IRValue *a, IRValue *b)
 	return add<IRInstShl>(a, b);
 }
 
+IRInstLShr *IRBuilder::CreateLShr(IRValue *a, IRValue *b)
+{
+	return add<IRInstLShr>(a, b);
+}
+
 IRInstAShr *IRBuilder::CreateAShr(IRValue *a, IRValue *b)
 {
 	return add<IRInstAShr>(a, b);

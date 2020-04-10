@@ -83,6 +83,10 @@ void AssemblyWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::shl32: shl32(inst); break;
 	case MachineInstOpcode::shl16: shl16(inst); break;
 	case MachineInstOpcode::shl8: shl8(inst); break;
+	case MachineInstOpcode::shr64: shr64(inst); break;
+	case MachineInstOpcode::shr32: shr32(inst); break;
+	case MachineInstOpcode::shr16: shr16(inst); break;
+	case MachineInstOpcode::shr8: shr8(inst); break;
 	case MachineInstOpcode::sar64: sar64(inst); break;
 	case MachineInstOpcode::sar32: sar32(inst); break;
 	case MachineInstOpcode::sar16: sar16(inst); break;
@@ -459,6 +463,26 @@ void AssemblyWriter::shl16(MachineInst* inst)
 void AssemblyWriter::shl8(MachineInst* inst)
 {
 	writeInst("shl8", inst);
+}
+
+void AssemblyWriter::shr64(MachineInst* inst)
+{
+	writeInst("shr64", inst);
+}
+
+void AssemblyWriter::shr32(MachineInst* inst)
+{
+	writeInst("shr32", inst);
+}
+
+void AssemblyWriter::shr16(MachineInst* inst)
+{
+	writeInst("shr16", inst);
+}
+
+void AssemblyWriter::shr8(MachineInst* inst)
+{
+	writeInst("shr8", inst);
 }
 
 void AssemblyWriter::sar64(MachineInst* inst)

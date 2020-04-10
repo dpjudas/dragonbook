@@ -257,6 +257,12 @@ void MachineInstSelection::inst(IRInstShl* node)
 	shiftBinaryInst(node, ops);
 }
 
+void MachineInstSelection::inst(IRInstLShr* node)
+{
+	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::shr64, MachineInstOpcode::shr32, MachineInstOpcode::shr16, MachineInstOpcode::shr8 };
+	shiftBinaryInst(node, ops);
+}
+
 void MachineInstSelection::inst(IRInstAShr* node)
 {
 	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::sar64, MachineInstOpcode::sar32, MachineInstOpcode::sar16, MachineInstOpcode::sar8 };

@@ -72,6 +72,10 @@ private:
 	void shl32(MachineInst* inst);
 	void shl16(MachineInst* inst);
 	void shl8(MachineInst* inst);
+	void shr64(MachineInst* inst);
+	void shr32(MachineInst* inst);
+	void shr16(MachineInst* inst);
+	void shr8(MachineInst* inst);
 	void sar64(MachineInst* inst);
 	void sar32(MachineInst* inst);
 	void sar16(MachineInst* inst);

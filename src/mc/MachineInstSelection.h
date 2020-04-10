@@ -27,6 +27,7 @@ private:
 	void inst(IRInstSRem* node) override;
 	void inst(IRInstURem* node) override;
 	void inst(IRInstShl* node) override;
+	void inst(IRInstLShr* node) override;
 	void inst(IRInstAShr* node) override;
 	void inst(IRInstICmpSLT* node) override;
 	void inst(IRInstICmpULT* node) override;

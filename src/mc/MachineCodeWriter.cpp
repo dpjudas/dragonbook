@@ -86,6 +86,10 @@ void MachineCodeWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::shl32: shl32(inst); break;
 	case MachineInstOpcode::shl16: shl16(inst); break;
 	case MachineInstOpcode::shl8: shl8(inst); break;
+	case MachineInstOpcode::shr64: shr64(inst); break;
+	case MachineInstOpcode::shr32: shr32(inst); break;
+	case MachineInstOpcode::shr16: shr16(inst); break;
+	case MachineInstOpcode::shr8: shr8(inst); break;
 	case MachineInstOpcode::sar64: sar64(inst); break;
 	case MachineInstOpcode::sar32: sar32(inst); break;
 	case MachineInstOpcode::sar16: sar16(inst); break;
@@ -510,6 +514,38 @@ void MachineCodeWriter::shl8(MachineInst* inst)
 		emitInstMI(OpFlags::Rex, 0xc0, 4, 8, inst);
 	else
 		emitInstMC(OpFlags::Rex, 0xd2, 4, inst); // register must be CL
+}
+
+void MachineCodeWriter::shr64(MachineInst* inst)
+{
+	if (inst->operands[1].type == MachineOperandType::imm)
+		emitInstMI(OpFlags::RexW, 0xc1, 5, 8, inst);
+	else
+		emitInstMC(OpFlags::RexW, 0xd3, 5, inst); // register must be CL
+}
+
+void MachineCodeWriter::shr32(MachineInst* inst)
+{
+	if (inst->operands[1].type == MachineOperandType::imm)
+		emitInstMI(0, 0xc1, 5, 8, inst);
+	else
+		emitInstMC(0, 0xd3, 5, inst); // register must be CL
+}
+
+void MachineCodeWriter::shr16(MachineInst* inst)
+{
+	if (inst->operands[1].type == MachineOperandType::imm)
+		emitInstMI(OpFlags::SizeOverride, 0xc1, 5, 8, inst);
+	else
+		emitInstMC(OpFlags::SizeOverride, 0xd3, 5, inst); // register must be CL
+}
+
+void MachineCodeWriter::shr8(MachineInst* inst)
+{
+	if (inst->operands[1].type == MachineOperandType::imm)
+		emitInstMI(OpFlags::Rex, 0xc0, 5, 8, inst);
+	else
+		emitInstMC(OpFlags::Rex, 0xd2, 5, inst); // register must be CL
 }
 
 void MachineCodeWriter::sar64(MachineInst* inst)

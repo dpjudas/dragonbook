@@ -55,6 +55,7 @@ public:
 	IRInstURem *CreateURem(IRValue *, IRValue *);
 
 	IRInstShl *CreateShl(IRValue *, IRValue *);
+	IRInstLShr *CreateLShr(IRValue *, IRValue *);
 	IRInstAShr *CreateAShr(IRValue *, IRValue *);
 
 	IRInstICmpSLT *CreateICmpSLT(IRValue *, IRValue *);

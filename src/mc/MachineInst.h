@@ -20,6 +20,7 @@ enum class MachineInstOpcode
 	not64, not32, not16, not8,
 	neg64, neg32, neg16, neg8,
 	shl64, shl32, shl16, shl8,
+	shr64, shr32, shr16, shr8,
 	sar64, sar32, sar16, sar8,
 	and64, and32, and16, and8,
 	or64, or32, or16, or8,
