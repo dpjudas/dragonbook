@@ -254,13 +254,13 @@ void MachineInstSelection::inst(IRInstURem* node)
 void MachineInstSelection::inst(IRInstShl* node)
 {
 	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::shl64, MachineInstOpcode::shl32, MachineInstOpcode::shl16, MachineInstOpcode::shl8 };
-	simpleBinaryInst(node, ops);
+	shiftBinaryInst(node, ops);
 }
 
 void MachineInstSelection::inst(IRInstAShr* node)
 {
 	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::sar64, MachineInstOpcode::sar32, MachineInstOpcode::sar16, MachineInstOpcode::sar8 };
-	simpleBinaryInst(node, ops);
+	shiftBinaryInst(node, ops);
 }
 
 void MachineInstSelection::inst(IRInstICmpSLT* node)
@@ -1013,7 +1013,6 @@ void MachineInstSelection::simpleBinaryInst(IRInstBinary* node, const MachineIns
 		inst->opcode = movOps[dataSizeType];
 		inst->operands.push_back(dst);
 		pushValueOperand(inst, node->operand1, dataSizeType);
-
 		bb->code.push_back(inst);
 	}
 
@@ -1023,7 +1022,55 @@ void MachineInstSelection::simpleBinaryInst(IRInstBinary* node, const MachineIns
 		inst->opcode = binaryOps[dataSizeType];
 		inst->operands.push_back(dst);
 		pushValueOperand(inst, node->operand2, dataSizeType);
+		bb->code.push_back(inst);
+	}
+}
 
+void MachineInstSelection::shiftBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps)
+{
+	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
+
+	int dataSizeType = getDataSizeType(node->type);
+
+	auto dst = newReg(node);
+
+	if (isConstant(node->operand2))
+	{
+		// Move operand1 to dest
+		auto inst = context->newMachineInst();
+		inst->opcode = movOps[dataSizeType];
+		inst->operands.push_back(dst);
+		pushValueOperand(inst, node->operand1, dataSizeType);
+		bb->code.push_back(inst);
+
+		// Apply operand2 to dest
+		inst = context->newMachineInst();
+		inst->opcode = binaryOps[dataSizeType];
+		inst->operands.push_back(dst);
+		pushValueOperand(inst, node->operand2, dataSizeType);
+		bb->code.push_back(inst);
+	}
+	else
+	{
+		// Move operand2 to rcx
+		auto inst = context->newMachineInst();
+		inst->opcode = movOps[dataSizeType];
+		inst->operands.push_back(newPhysReg(RegisterName::rcx));
+		pushValueOperand(inst, node->operand2, dataSizeType);
+		bb->code.push_back(inst);
+
+		// Move operand1 to dest
+		inst = context->newMachineInst();
+		inst->opcode = movOps[dataSizeType];
+		inst->operands.push_back(dst);
+		pushValueOperand(inst, node->operand1, dataSizeType);
+		bb->code.push_back(inst);
+
+		// Apply rcx to dest
+		inst = context->newMachineInst();
+		inst->opcode = binaryOps[dataSizeType];
+		inst->operands.push_back(dst);
+		inst->operands.push_back(newPhysReg(RegisterName::rcx));
 		bb->code.push_back(inst);
 	}
 }
@@ -1071,12 +1118,24 @@ void MachineInstSelection::divBinaryInst(IRInstBinary* node, const MachineInstOp
 	}
 
 	// Divide
+	if (isConstant(node->operand2) || isGlobalVariable(node->operand2))
+	{
+		auto inst = context->newMachineInst();
+		inst->opcode = movOps[dataSizeType];
+		inst->operands.push_back(dst);
+		pushValueOperand(inst, node->operand2, dataSizeType);
+		bb->code.push_back(inst);
+
+		inst = context->newMachineInst();
+		inst->opcode = binaryOps[dataSizeType];
+		inst->operands.push_back(dst);
+		bb->code.push_back(inst);
+	}
+	else
 	{
 		auto inst = context->newMachineInst();
 		inst->opcode = binaryOps[dataSizeType];
-		inst->operands.push_back(dst);
 		pushValueOperand(inst, node->operand2, dataSizeType);
-
 		bb->code.push_back(inst);
 	}
 
@@ -1086,7 +1145,6 @@ void MachineInstSelection::divBinaryInst(IRInstBinary* node, const MachineInstOp
 		inst->opcode = movOps[dataSizeType];
 		inst->operands.push_back(dst);
 		inst->operands.push_back(newPhysReg(remainder ? RegisterName::rdx : RegisterName::rax));
-
 		bb->code.push_back(inst);
 	}
 }

@@ -86,6 +86,7 @@ private:
 
 	void simpleCompareInst(IRInstBinary* node, MachineInstOpcode opSet);
 	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
+	void shiftBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
 	void divBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps, bool remainder);
 	void pushValueOperand(MachineInst* inst, IRValue* operand, int dataSizeType);
 	void pushBBOperand(MachineInst* inst, IRBasicBlock* bb);
