@@ -224,13 +224,13 @@ void MachineInstSelection::inst(IRInstFMul* node)
 void MachineInstSelection::inst(IRInstSDiv* node)
 {
 	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::idiv64, MachineInstOpcode::idiv32, MachineInstOpcode::idiv16, MachineInstOpcode::idiv8 };
-	divBinaryInst(node, ops, false);
+	divBinaryInst(node, ops, false, false);
 }
 
 void MachineInstSelection::inst(IRInstUDiv* node)
 {
 	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::div64, MachineInstOpcode::div32, MachineInstOpcode::div16, MachineInstOpcode::div8 };
-	divBinaryInst(node, ops, false);
+	divBinaryInst(node, ops, false, true);
 }
 
 void MachineInstSelection::inst(IRInstFDiv* node)
@@ -242,13 +242,13 @@ void MachineInstSelection::inst(IRInstFDiv* node)
 void MachineInstSelection::inst(IRInstSRem* node)
 {
 	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::idiv64, MachineInstOpcode::idiv32, MachineInstOpcode::idiv16, MachineInstOpcode::idiv8 };
-	divBinaryInst(node, ops, true);
+	divBinaryInst(node, ops, true, false);
 }
 
 void MachineInstSelection::inst(IRInstURem* node)
 {
 	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::div64, MachineInstOpcode::div32, MachineInstOpcode::div16, MachineInstOpcode::div8 };
-	divBinaryInst(node, ops, true);
+	divBinaryInst(node, ops, true, true);
 }
 
 void MachineInstSelection::inst(IRInstShl* node)
@@ -1045,10 +1045,11 @@ void MachineInstSelection::shiftBinaryInst(IRInstBinary* node, const MachineInst
 	}
 }
 
-void MachineInstSelection::divBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps, bool remainder)
+void MachineInstSelection::divBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps, bool remainder, bool zeroext)
 {
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 	static const MachineInstOpcode sarOps[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::sar64, MachineInstOpcode::sar32, MachineInstOpcode::sar16, MachineInstOpcode::sar8 };
+	static const MachineInstOpcode xorOps[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::xor64, MachineInstOpcode::xor32, MachineInstOpcode::xor16, MachineInstOpcode::xor8 };
 	static const int shiftcount[] = { 0, 0, 63, 31, 15, 7 };
 
 	int dataSizeType = getDataSizeType(node->type);
@@ -1065,22 +1066,33 @@ void MachineInstSelection::divBinaryInst(IRInstBinary* node, const MachineInstOp
 
 		if (dataSizeType != 5)
 		{
-			auto inst2 = context->newMachineInst();
-			inst2->opcode = movOps[dataSizeType];
-			inst2->operands.push_back(newPhysReg(RegisterName::rdx));
-			inst2->operands.push_back(newPhysReg(RegisterName::rax));
-			bb->code.push_back(inst2);
+			if (zeroext)
+			{
+				auto inst2 = context->newMachineInst();
+				inst2->opcode = xorOps[dataSizeType];
+				inst2->operands.push_back(newPhysReg(RegisterName::rdx));
+				inst2->operands.push_back(newPhysReg(RegisterName::rdx));
+				bb->code.push_back(inst2);
+			}
+			else
+			{
+				auto inst2 = context->newMachineInst();
+				inst2->opcode = movOps[dataSizeType];
+				inst2->operands.push_back(newPhysReg(RegisterName::rdx));
+				inst2->operands.push_back(newPhysReg(RegisterName::rax));
+				bb->code.push_back(inst2);
 
-			auto inst3 = context->newMachineInst();
-			inst3->opcode = sarOps[dataSizeType];
-			inst3->operands.push_back(newPhysReg(RegisterName::rdx));
-			inst3->operands.push_back(newImm(shiftcount[dataSizeType]));
-			bb->code.push_back(inst3);
+				auto inst3 = context->newMachineInst();
+				inst3->opcode = sarOps[dataSizeType];
+				inst3->operands.push_back(newPhysReg(RegisterName::rdx));
+				inst3->operands.push_back(newImm(shiftcount[dataSizeType]));
+				bb->code.push_back(inst3);
+			}
 		}
 		else
 		{
 			auto inst2 = context->newMachineInst();
-			inst2->opcode = MachineInstOpcode::movsx8_16;
+			inst2->opcode = zeroext ? MachineInstOpcode::movzx8_16 : MachineInstOpcode::movsx8_16;
 			inst2->operands.push_back(newPhysReg(RegisterName::rax));
 			inst2->operands.push_back(newPhysReg(RegisterName::rax));
 			bb->code.push_back(inst2);
