@@ -267,11 +267,6 @@ IRInstXor *IRBuilder::CreateXor(IRValue *a, IRValue *b)
 	return add<IRInstXor>(a, b);
 }
 
-IRInstMemSet *IRBuilder::CreateMemSet(IRValue *dst, IRValue *val, IRValue *size)
-{
-	return add<IRInstMemSet>(dst, val, size);
-}
-
 IRInstBr *IRBuilder::CreateBr(IRBasicBlock *a)
 {
 	return add<IRInstBr>(a);

@@ -766,42 +766,6 @@ void MachineInstSelection::inst(IRInstCall* node)
 	}
 }
 
-/*static void jitmemset(void* dst, int val, int size)
-{
-	memset(dst, val, size);
-}*/
-
-void MachineInstSelection::inst(IRInstMemSet* node)
-{
-	// To do: decompose to an actual call instruction
-
-	/*
-	MachineOperand funcptr = newTempReg();
-
-	auto loadinst = context->newMachineInst();
-	loadinst->opcode = MachineInstOpcode::load64;
-	loadinst->operands.push_back(funcptr);
-	loadinst->operands.push_back(newConstant((uint64_t)(ptrdiff_t)&jitmemset));
-	bb->code.push_back(loadinst);
-
-	MachineOperand functype_op;
-	functype_op.type = MachineOperandType::functype;
-	functype_op.functype = sfunc->context->getFunctionType(sfunc->context->getVoidTy(), { sfunc->context->getVoidPtrTy(), sfunc->context->getInt32Ty(), sfunc->context->getInt32Ty() });
-
-	auto retval = newReg(node);
-
-	auto inst = context->newMachineInst();
-	inst->opcode = MachineInstOpcode::call;
-	inst->operands.push_back(functype_op);
-	inst->operands.push_back(funcptr);
-	inst->operands.push_back(retval);
-	pushValueOperand(inst, node->dst, 2);
-	pushValueOperand(inst, node->val, 3);
-	pushValueOperand(inst, node->size, 3);
-	bb->code.push_back(inst);
-	*/
-}
-
 void MachineInstSelection::inst(IRInstGEP* node)
 {
 	int offset = 0;

@@ -84,8 +84,6 @@ public:
 	IRInstOr *CreateOr(IRValue *, IRValue *);
 	IRInstXor *CreateXor(IRValue *, IRValue *);
 
-	IRInstMemSet *CreateMemSet(IRValue *dst, IRValue *val, IRValue *size);
-
 	IRInstBr *CreateBr(IRBasicBlock *);
 	IRInstCondBr *CreateCondBr(IRValue *, IRBasicBlock *, IRBasicBlock *);
 	IRInstRet *CreateRet(IRValue *);

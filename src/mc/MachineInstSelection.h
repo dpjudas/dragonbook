@@ -60,7 +60,6 @@ private:
 	void inst(IRInstBitCast* node) override;
 	void inst(IRInstCall* node) override;
 	void inst(IRInstGEP* node) override;
-	void inst(IRInstMemSet* node) override;
 	void inst(IRInstBr* node) override;
 	void inst(IRInstCondBr* node) override;
 	void inst(IRInstRet* node) override;

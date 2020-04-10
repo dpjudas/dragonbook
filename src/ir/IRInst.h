@@ -163,18 +163,6 @@ public:
 	std::vector<IRValue *> indices;
 };
 
-class IRInstMemSet : public IRInst
-{
-public:
-	IRInstMemSet(IRValue *dst, IRValue *val, IRValue *size) : IRInst(nullptr), dst(dst), val(val), size(size) {}
-
-	void visit(IRInstVisitor *visitor) { visitor->inst(this); }
-
-	IRValue *dst;
-	IRValue *val;
-	IRValue *size;
-};
-
 class IRInstBasicBlockEnd : public IRInst
 {
 public:

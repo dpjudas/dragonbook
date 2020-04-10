@@ -51,7 +51,6 @@ class IRInstSIToFP;
 class IRInstBitCast;
 class IRInstCall;
 class IRInstGEP;
-class IRInstMemSet;
 class IRInstBr;
 class IRInstCondBr;
 class IRInstRet;
@@ -111,7 +110,6 @@ public:
 	virtual void inst(IRInstBitCast *node) = 0;
 	virtual void inst(IRInstCall *node) = 0;
 	virtual void inst(IRInstGEP *node) = 0;
-	virtual void inst(IRInstMemSet *node) = 0;
 	virtual void inst(IRInstBr *node) = 0;
 	virtual void inst(IRInstCondBr *node) = 0;
 	virtual void inst(IRInstRet *node) = 0;
