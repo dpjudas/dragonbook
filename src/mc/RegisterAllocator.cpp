@@ -10,6 +10,7 @@ void RegisterAllocator::run(IRContext* context, MachineFunction* func)
 void RegisterAllocator::run()
 {
 	createRegisterInfo();
+	runLiveAnalysis();
 
 	//static const RegisterName unixregvars[] = { RegisterName::rdi, RegisterName::rsi, RegisterName::rdx, RegisterName::rcx, RegisterName::r8, RegisterName::r9 };
 	static const RegisterName win64regvars[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
@@ -427,4 +428,45 @@ void RegisterAllocator::setAsLeastRecentlyUsed(int pregIndex)
 int RegisterAllocator::getLeastRecentlyUsed(MachineRegClass cls)
 {
 	return regclass[(int)cls].mru.front();
+}
+
+void RegisterAllocator::runLiveAnalysis()
+{
+	for (MachineBasicBlock* bb : func->basicBlocks)
+	{
+		for (MachineInst* inst : bb->code)
+		{
+			for (const MachineOperand& operand : inst->operands)
+			{
+				if (operand.type == MachineOperandType::reg)
+				{
+					addLiveReference(operand.registerIndex, bb);
+				}
+			}
+		}
+	}
+}
+
+void RegisterAllocator::addLiveReference(size_t vregIndex, MachineBasicBlock* bb)
+{
+	RARegisterInfo& vreg = reginfo[vregIndex];
+	if (vreg.liveReferences)
+	{
+		RARegisterLiveReference* ref = vreg.liveReferences.get();
+		while (ref->bb != bb && ref->next)
+			ref = ref->next.get();
+
+		if (ref->bb == bb)
+		{
+			ref->refcount++;
+		}
+		else
+		{
+			ref->next = std::make_unique<RARegisterLiveReference>(bb);
+		}
+	}
+	else
+	{
+		vreg.liveReferences = std::make_unique<RARegisterLiveReference>(bb);
+	}
 }

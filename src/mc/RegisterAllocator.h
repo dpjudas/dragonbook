@@ -3,6 +3,16 @@
 #include "MachineInst.h"
 #include <list>
 
+class RARegisterLiveReference
+{
+public:
+	RARegisterLiveReference(MachineBasicBlock* bb) : bb(bb) { }
+
+	MachineBasicBlock* bb = nullptr;
+	int refcount = 1;
+	std::unique_ptr<RARegisterLiveReference> next;
+};
+
 struct RARegisterInfo
 {
 	MachineRegClass cls = MachineRegClass::reserved;
@@ -10,6 +20,8 @@ struct RARegisterInfo
 	int physreg = -1;
 	int stackoffset = -1;
 	bool spilled = true;
+
+	std::unique_ptr<RARegisterLiveReference> liveReferences;
 };
 
 struct RARegisterClass
@@ -49,6 +61,9 @@ private:
 	void setAsMostRecentlyUsed(int pregIndex);
 	void setAsLeastRecentlyUsed(int pregIndex);
 	int getLeastRecentlyUsed(MachineRegClass cls);
+
+	void runLiveAnalysis();
+	void addLiveReference(size_t vregIndex, MachineBasicBlock* bb);
 
 	IRContext* context;
 	MachineFunction* func;
