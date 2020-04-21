@@ -69,7 +69,7 @@ enum class MachineUnwindHint
 class MachineInst
 {
 public:
-	MachineInstOpcode opcode;
+	MachineInstOpcode opcode = MachineInstOpcode::nop;
 	std::vector<MachineOperand> operands;
 
 	int unwindOffset = -1;
