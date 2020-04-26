@@ -72,6 +72,7 @@ private:
 	RARegisterClass regclass[2];
 
 	int nextStackOffset = 0;
+	std::vector<int> freeStackOffsets;
 
 	std::vector<MachineInst*> emittedInstructions;
 };

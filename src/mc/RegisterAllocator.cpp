@@ -76,6 +76,23 @@ void RegisterAllocator::run()
 				}
 			}
 
+			for (MachineOperand& operand : inst->operands)
+			{
+				if (operand.type == MachineOperandType::reg)
+				{
+					// If vreg is only used by one BB we can safely kill it once we get to the last inst using it
+					auto& liveref = reginfo[operand.registerIndex].liveReferences;
+					if (liveref && liveref->bb == bb && !liveref->next)
+					{
+						liveref->refcount--;
+						if (liveref->refcount == 0)
+						{
+							killVirtRegister(operand.registerIndex);
+						}
+					}
+				}
+			}
+
 			if (inst->opcode == MachineInstOpcode::jz || inst->opcode == MachineInstOpcode::jmp)
 			{
 				if (inst->operands[0].bb == func->epilog)
@@ -304,13 +321,15 @@ void RegisterAllocator::killVirtRegister(int vregIndex)
 	{
 		int pregIndex = vreg.physreg;
 		auto& physreg = reginfo[pregIndex];
-
-		vreg.spilled = true;
-		vreg.physreg = -1;
 		physreg.vreg = -1;
 
 		setAsLeastRecentlyUsed(pregIndex);
 	}
+
+	vreg.spilled = true;
+	vreg.physreg = -1;
+
+	freeStackOffsets.push_back(vreg.stackoffset);
 }
 
 void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
@@ -386,8 +405,16 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 
 	if (vreg.stackoffset == -1)
 	{
-		nextStackOffset += 8;
-		vreg.stackoffset = nextStackOffset;
+		if (freeStackOffsets.empty())
+		{
+			nextStackOffset += 8;
+			vreg.stackoffset = nextStackOffset;
+		}
+		else
+		{
+			vreg.stackoffset = freeStackOffsets.back();
+			freeStackOffsets.pop_back();
+		}
 	}
 
 	// emit move from register to stack:
