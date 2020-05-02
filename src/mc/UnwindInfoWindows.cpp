@@ -60,7 +60,7 @@ std::vector<uint16_t> UnwindInfoWindows::create(MachineFunction* func)
 		else if (inst->unwindHint == MachineUnwindHint::RegisterStackLocation)
 		{
 			uint32_t vecSize = 16;
-			int stackoffset = inst->operands[0].stackOffset;
+			int stackoffset = inst->operands[0].spillOffset;
 			if (stackoffset / vecSize < (1 << 16))
 			{
 				opoffset = (uint32_t)inst->unwindOffset;
@@ -89,6 +89,12 @@ std::vector<uint16_t> UnwindInfoWindows::create(MachineFunction* func)
 	uint16_t version = 1, flags = 0, frameRegister = 0, frameOffset = 0;
 	uint16_t sizeOfProlog = (uint16_t)lastOffset;
 	uint16_t countOfCodes = (uint16_t)codes.size();
+
+	if (func->dynamicStackAllocations)
+	{
+		frameRegister = (int)RegisterName::rbp;
+		frameOffset = func->fixedFrameSize / 16;
+	}
 
 	std::vector<uint16_t> info;
 	info.push_back(version | (flags << 3) | (sizeOfProlog << 8));

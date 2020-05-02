@@ -1,5 +1,6 @@
 
 #include "MachineInstSelection.h"
+#include <algorithm>
 
 MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 {
@@ -658,6 +659,8 @@ void MachineInstSelection::inst(IRInstCall* node)
 	static const MachineInstOpcode storeOps[] = { MachineInstOpcode::storesd, MachineInstOpcode::storess, MachineInstOpcode::store64, MachineInstOpcode::store32, MachineInstOpcode::store16, MachineInstOpcode::store8 };
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 
+	int callArgsSize = 0;
+
 	// Move arguments into place
 	for (size_t i = 0; i < node->args.size(); i++)
 	{
@@ -686,8 +689,8 @@ void MachineInstSelection::inst(IRInstCall* node)
 		else
 		{
 			MachineOperand dst;
-			dst.type = MachineOperandType::stack;
-			dst.stackOffset = -(int)(i * 8); // To do: needs to be relative to rsp
+			dst.type = MachineOperandType::stackOffset;
+			dst.stackOffset = (int)(i * 8);
 
 			if (isMemSrc)
 			{
@@ -716,7 +719,11 @@ void MachineInstSelection::inst(IRInstCall* node)
 				bb->code.push_back(inst);
 			}
 		}
+
+		callArgsSize += 8;
 	}
+
+	mfunc->maxCallArgsSize = std::max(mfunc->maxCallArgsSize, callArgsSize);
 
 	// Call the function
 	{
@@ -897,6 +904,9 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 	inst->operands.push_back(dst);
 	inst->operands.push_back(size);
 	bb->code.push_back(inst);
+
+	// To do: convert above to "add rsp,size", "mov vreg,rsp"
+	// mfunc->dynamicStackAllocations = true;
 }
 
 int MachineInstSelection::getDataSizeType(IRType* type)

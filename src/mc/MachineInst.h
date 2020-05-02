@@ -39,7 +39,7 @@ enum class MachineInstOpcode
 
 enum class MachineOperandType
 {
-	reg, constant, stack, imm, basicblock, func, global
+	reg, constant, spillOffset, stackOffset, imm, basicblock, func, global
 };
 
 class MachineOperand
@@ -50,6 +50,7 @@ public:
 	{
 		int registerIndex;
 		int constantIndex;
+		int spillOffset;
 		int stackOffset;
 		uint64_t immvalue;
 		MachineBasicBlock* bb;
@@ -63,7 +64,8 @@ enum class MachineUnwindHint
 	None,
 	PushNonvolatile,
 	StackAdjustment,
-	RegisterStackLocation
+	RegisterStackLocation,
+	SaveFrameRegister
 };
 
 class MachineInst
@@ -125,7 +127,9 @@ public:
 	std::vector<MachineBasicBlock*> basicBlocks;
 	std::vector<MachineConstant> constants;
 	std::vector<MachineRegister> registers;
-	int stackSize = 0;
+	int maxCallArgsSize = 0;
+	int fixedFrameSize = 0;
+	bool dynamicStackAllocations = false;
 };
 
 enum class RegisterName : int

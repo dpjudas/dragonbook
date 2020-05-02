@@ -58,7 +58,7 @@ std::vector<uint8_t> UnwindInfoUnix::create(MachineFunction* func, unsigned int&
 		else if (inst->unwindHint == MachineUnwindHint::RegisterStackLocation)
 		{
 			uint32_t vecSize = 16;
-			int vecOffset = inst->operands[0].stackOffset;
+			int vecOffset = inst->operands[0].spillOffset;
 			writeAdvanceLoc(fdeInstructions, inst->unwindOffset, lastOffset);
 			writeRegisterStackLocation(fdeInstructions, dwarfRegXmmId + inst->operands[1].registerIndex, stackOffset - vecOffset);
 		}

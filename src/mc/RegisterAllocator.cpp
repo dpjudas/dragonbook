@@ -112,18 +112,20 @@ void RegisterAllocator::run()
 		emittedInstructions.clear();
 	}
 
-	func->stackSize = nextStackOffset;
+	// [funcargs] [retaddr] <framebegin> [spill area] [dsa/alloca area] [callargs] <rsp>
+	func->fixedFrameSize = nextStackOffset + func->maxCallArgsSize;
 
 	// To do: only save the registers we used
 	//std::vector<RegisterName> savedRegsUnix = { RegisterName::rbx, RegisterName::rbp, RegisterName::r12, RegisterName::r13, RegisterName::r14, RegisterName::r15 };
 	std::vector<RegisterName> savedRegsWin64 = { RegisterName::rbx, RegisterName::rbp, RegisterName::rdi, RegisterName::rsi, RegisterName::r12, RegisterName::r13, RegisterName::r14, RegisterName::r15 };
 	std::vector<RegisterName> savedXmmRegs = { RegisterName::xmm6, RegisterName::xmm7, RegisterName::xmm8, RegisterName::xmm9, RegisterName::xmm10, RegisterName::xmm11, RegisterName::xmm12, RegisterName::xmm13, RegisterName::xmm14, RegisterName::xmm15 };
-	func->stackSize += (int)savedXmmRegs.size() * 8;
-	emitProlog(savedRegsWin64, savedXmmRegs, func->stackSize);
-	emitEpilog(savedRegsWin64, savedXmmRegs, func->stackSize);
+	func->fixedFrameSize += (int)savedXmmRegs.size() * 8;
+	func->fixedFrameSize = (func->fixedFrameSize + 15) / 16 * 16; // 16-byte align frame
+	emitProlog(savedRegsWin64, savedXmmRegs, func->fixedFrameSize, func->dynamicStackAllocations);
+	emitEpilog(savedRegsWin64, savedXmmRegs, func->fixedFrameSize, func->dynamicStackAllocations);
 }
 
-void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize)
+void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize, bool dsa)
 {
 	for (RegisterName physReg : savedRegs)
 	{
@@ -156,12 +158,12 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 		func->prolog->code.push_back(inst);
 	}
 
-	int i = 1;
+	int i = 0;
 	for (RegisterName physReg : savedXmmRegs)
 	{
 		MachineOperand dst;
-		dst.type = MachineOperandType::stack;
-		dst.stackOffset = nextStackOffset + i * 8;
+		dst.type = MachineOperandType::stackOffset;
+		dst.stackOffset = i * 8;
 
 		MachineOperand src;
 		src.type = MachineOperandType::reg;
@@ -176,6 +178,24 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 		i++;
 	}
 
+	if (dsa)
+	{
+		MachineOperand dst;
+		dst.type = MachineOperandType::reg;
+		dst.registerIndex = (int)RegisterName::rbp;
+
+		MachineOperand src;
+		src.type = MachineOperandType::reg;
+		src.registerIndex = (int)RegisterName::rsp;
+
+		auto inst = context->newMachineInst();
+		inst->opcode = MachineInstOpcode::mov64;
+		inst->operands.push_back(dst);
+		inst->operands.push_back(src);
+		inst->unwindHint = MachineUnwindHint::SaveFrameRegister;
+		func->prolog->code.push_back(inst);
+	}
+
 	{
 		MachineOperand dst;
 		dst.type = MachineOperandType::basicblock;
@@ -188,9 +208,26 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 	}
 }
 
-void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize)
+void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize, bool dsa)
 {
-	int i = 1;
+	if (dsa)
+	{
+		MachineOperand dst;
+		dst.type = MachineOperandType::reg;
+		dst.registerIndex = (int)RegisterName::rsp;
+
+		MachineOperand src;
+		src.type = MachineOperandType::reg;
+		src.registerIndex = (int)RegisterName::rbp;
+
+		auto inst = context->newMachineInst();
+		inst->opcode = MachineInstOpcode::mov64;
+		inst->operands.push_back(dst);
+		inst->operands.push_back(src);
+		func->epilog->code.push_back(inst);
+	}
+
+	int i = 0;
 	for (RegisterName physReg : savedXmmRegs)
 	{
 		MachineOperand dst;
@@ -198,8 +235,8 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 		dst.registerIndex = (int)physReg;
 
 		MachineOperand src;
-		src.type = MachineOperandType::stack;
-		src.stackOffset = nextStackOffset + i * 8;
+		src.type = MachineOperandType::stackOffset;
+		src.spillOffset = i * 8;
 
 		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::loadsd;
@@ -356,8 +393,8 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		dest.registerIndex = pregIndex;
 
 		MachineOperand src;
-		src.type = MachineOperandType::stack;
-		src.stackOffset = vreg.stackoffset;
+		src.type = MachineOperandType::spillOffset;
+		src.spillOffset = vreg.stackoffset;
 
 		auto inst = context->newMachineInst();
 		inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::load64 : MachineInstOpcode::loadsd;
@@ -420,8 +457,8 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 	// emit move from register to stack:
 
 	MachineOperand dest;
-	dest.type = MachineOperandType::stack;
-	dest.stackOffset = vreg.stackoffset;
+	dest.type = MachineOperandType::spillOffset;
+	dest.spillOffset = vreg.stackoffset;
 
 	MachineOperand src;
 	src.type = MachineOperandType::reg;

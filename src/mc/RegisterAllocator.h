@@ -39,8 +39,8 @@ private:
 	RegisterAllocator(IRContext* context, MachineFunction* func) : context(context), func(func) { }
 	void run();
 
-	void emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize);
-	void emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize);
+	void emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize, bool dsa);
+	void emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize, bool dsa);
 
 	bool isFloat(IRType* type) const { return dynamic_cast<IRFloatType*>(type); }
 	bool isDouble(IRType* type) const { return dynamic_cast<IRDoubleType*>(type); }
