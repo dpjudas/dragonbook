@@ -149,7 +149,6 @@ void MachineCodeWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::jmp: jmp(inst); break;
 	case MachineInstOpcode::jz: jz(inst); break;
 	case MachineInstOpcode::call: call(inst); break;
-	case MachineInstOpcode::alloca_: alloca_(inst); break;
 	case MachineInstOpcode::ret: ret(inst); break;
 	case MachineInstOpcode::push: push(inst); break;
 	case MachineInstOpcode::pop: pop(inst); break;
@@ -938,11 +937,6 @@ void MachineCodeWriter::call(MachineInst* inst)
 	// call rax
 	writeOpcode(0, { 0xff }, 0, 0, regindex >> 3);
 	writeModRM(3, 2, regindex);
-}
-
-void MachineCodeWriter::alloca_(MachineInst* inst)
-{
-	//cc.lea(reg_i64(inst->operands[0]), cc.newStack((uint32_t)imm(inst->operands[1]), 8));
 }
 
 void MachineCodeWriter::ret(MachineInst* inst)

@@ -895,18 +895,34 @@ void MachineInstSelection::inst(IRInstRetVoid* node)
 
 void MachineInstSelection::inst(IRInstAlloca* node)
 {
-	MachineOperand size = newImm(node->type->getPointerElementType()->getTypeAllocSize() * getConstantValueInt(node->arraySize));
+	uint64_t size = node->type->getPointerElementType()->getTypeAllocSize() * getConstantValueInt(node->arraySize);
+	size = (size + 15) / 16 * 16;
 
-	auto dst = newReg(node);
+	// add rsp,size
+	{
+		MachineOperand src = newImm(size);
+		MachineOperand dst = newPhysReg(RegisterName::rsp);
 
-	auto inst = context->newMachineInst();
-	inst->opcode = MachineInstOpcode::alloca_;
-	inst->operands.push_back(dst);
-	inst->operands.push_back(size);
-	bb->code.push_back(inst);
+		auto inst = context->newMachineInst();
+		inst->opcode = MachineInstOpcode::add64;
+		inst->operands.push_back(dst);
+		inst->operands.push_back(src);
+		bb->code.push_back(inst);
+	}
 
-	// To do: convert above to "add rsp,size", "mov vreg,rsp"
-	// mfunc->dynamicStackAllocations = true;
+	// mov vreg,rsp
+	{
+		MachineOperand src = newPhysReg(RegisterName::rsp);
+		MachineOperand dst = newReg(node);
+
+		auto inst = context->newMachineInst();
+		inst->opcode = MachineInstOpcode::mov64;
+		inst->operands.push_back(dst);
+		inst->operands.push_back(src);
+		bb->code.push_back(inst);
+	}
+
+	mfunc->dynamicStackAllocations = true;
 }
 
 int MachineInstSelection::getDataSizeType(IRType* type)

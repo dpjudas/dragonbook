@@ -146,7 +146,6 @@ void AssemblyWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::jmp: jmp(inst); break;
 	case MachineInstOpcode::jz: jz(inst); break;
 	case MachineInstOpcode::call: call(inst); break;
-	case MachineInstOpcode::alloca_: alloca_(inst); break;
 	case MachineInstOpcode::ret: ret(inst); break;
 	case MachineInstOpcode::push: push(inst); break;
 	case MachineInstOpcode::pop: pop(inst); break;
@@ -779,11 +778,6 @@ void AssemblyWriter::jz(MachineInst* inst)
 void AssemblyWriter::call(MachineInst* inst)
 {
 	writeInst("call", inst);
-}
-
-void AssemblyWriter::alloca_(MachineInst* inst)
-{
-	writeInst("alloca", inst);
 }
 
 void AssemblyWriter::ret(MachineInst* inst)

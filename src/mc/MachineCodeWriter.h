@@ -135,7 +135,6 @@ private:
 	void jmp(MachineInst* inst);
 	void jz(MachineInst* inst);
 	void call(MachineInst* inst);
-	void alloca_(MachineInst* inst);
 	void ret(MachineInst* inst);
 	void push(MachineInst* inst);
 	void pop(MachineInst* inst);
