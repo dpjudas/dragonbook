@@ -652,125 +652,11 @@ void MachineInstSelection::inst(IRInstBitCast* node)
 
 void MachineInstSelection::inst(IRInstCall* node)
 {
-	//static const RegisterName unixregvars[] = { RegisterName::rdi, RegisterName::rsi, RegisterName::rdx, RegisterName::rcx, RegisterName::r8, RegisterName::r9 };
-	static const RegisterName win64regvars[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
-
-	static const MachineInstOpcode loadOps[] = { MachineInstOpcode::loadsd, MachineInstOpcode::loadss, MachineInstOpcode::load64, MachineInstOpcode::load32, MachineInstOpcode::load16, MachineInstOpcode::load8 };
-	static const MachineInstOpcode storeOps[] = { MachineInstOpcode::storesd, MachineInstOpcode::storess, MachineInstOpcode::store64, MachineInstOpcode::store32, MachineInstOpcode::store16, MachineInstOpcode::store8 };
-	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
-
-	int callArgsSize = 0;
-
-	// Move arguments into place
-	for (size_t i = 0; i < node->args.size(); i++)
-	{
-		IRValue* arg = node->args[i];
-
-		bool isMemSrc = isConstantFP(arg) || isGlobalVariable(arg);
-		int dataSizeType = getDataSizeType(arg->type);
-		bool isXmm = dataSizeType < 2;
-
-		// First four go to registers
-		if (i < 4)
-		{
-			MachineOperand dst;
-			dst.type = MachineOperandType::reg;
-			if (isXmm)
-				dst.registerIndex = (int)RegisterName::xmm0 + (int)i;
-			else
-				dst.registerIndex = (int)win64regvars[i];
-
-			auto inst = context->newMachineInst();
-			inst->opcode = isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType];
-			inst->operands.push_back(dst);
-			pushValueOperand(inst, arg, dataSizeType);
-			bb->code.push_back(inst);
-		}
-		else
-		{
-			MachineOperand dst;
-			dst.type = MachineOperandType::stackOffset;
-			dst.stackOffset = (int)(i * 8);
-
-			if (isMemSrc)
-			{
-				MachineOperand tmpreg;
-				tmpreg.type = MachineOperandType::reg;
-				tmpreg.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
-
-				auto loadinst = context->newMachineInst();
-				loadinst->opcode = loadOps[dataSizeType];
-				loadinst->operands.push_back(tmpreg);
-				pushValueOperand(loadinst, arg, dataSizeType);
-				bb->code.push_back(loadinst);
-
-				auto storeinst = context->newMachineInst();
-				storeinst->opcode = storeOps[dataSizeType];
-				storeinst->operands.push_back(dst);
-				storeinst->operands.push_back(tmpreg);
-				bb->code.push_back(storeinst);
-			}
-			else
-			{
-				auto inst = context->newMachineInst();
-				inst->opcode = storeOps[dataSizeType];
-				inst->operands.push_back(dst);
-				pushValueOperand(inst, arg, dataSizeType);
-				bb->code.push_back(inst);
-			}
-		}
-
-		callArgsSize += 8;
-	}
-
-	mfunc->maxCallArgsSize = std::max(mfunc->maxCallArgsSize, callArgsSize);
-
-	// Call the function
-	{
-		MachineOperand dst;
-
-		IRFunction* func = dynamic_cast<IRFunction*>(node->func);
-		if (func)
-		{
-			dst.type = MachineOperandType::func;
-			dst.func = func;
-		}
-		else
-		{
-			dst.type = MachineOperandType::reg;
-			dst.registerIndex = (int)RegisterName::rax;
-
-			auto inst = context->newMachineInst();
-			inst->opcode = MachineInstOpcode::mov64;
-			inst->operands.push_back(dst);
-			inst->operands.push_back(instRegister[node->func]);
-			bb->code.push_back(inst);
-		}
-
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::call;
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
-	}
-
-	// Move return value to virtual register
-	if (node->type != context->getVoidTy())
-	{
-		int dataSizeType = getDataSizeType(node->type);
-		bool isXmm = dataSizeType < 2;
-
-		MachineOperand src;
-		src.type = MachineOperandType::reg;
-		src.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
-
-		auto dst = newReg(node);
-
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		inst->operands.push_back(src);
-		bb->code.push_back(inst);
-	}
+#ifdef WIN32
+	callWin64(node);
+#else
+	callUnix64(node);
+#endif
 }
 
 void MachineInstSelection::inst(IRInstGEP* node)
@@ -910,10 +796,11 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 		bb->code.push_back(inst);
 	}
 
+	MachineOperand dst = newReg(node);
+
 	// mov vreg,rsp
 	{
 		MachineOperand src = newPhysReg(RegisterName::rsp);
-		MachineOperand dst = newReg(node);
 
 		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::mov64;
@@ -922,7 +809,19 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 		bb->code.push_back(inst);
 	}
 
+	// add vreg,maxCallArgsSize
+	{
+		MachineOperand src = newImm(mfunc->maxCallArgsSize); // To do: maxCallArgsSize must be calculated first for the entire function
+
+		auto inst = context->newMachineInst();
+		inst->opcode = MachineInstOpcode::add64;
+		inst->operands.push_back(dst);
+		inst->operands.push_back(src);
+		bb->code.push_back(inst);
+	}
+
 	mfunc->dynamicStackAllocations = true;
+	mfunc->registers[(int)RegisterName::rbp].cls = MachineRegClass::reserved;
 }
 
 int MachineInstSelection::getDataSizeType(IRType* type)
@@ -939,6 +838,252 @@ int MachineInstSelection::getDataSizeType(IRType* type)
 		return 5;
 	else // if (isInt64(type) || isPointer(type) || isFunction(type))
 		return 2;
+}
+
+void MachineInstSelection::callWin64(IRInstCall* node)
+{
+	static const MachineInstOpcode loadOps[] = { MachineInstOpcode::loadsd, MachineInstOpcode::loadss, MachineInstOpcode::load64, MachineInstOpcode::load32, MachineInstOpcode::load16, MachineInstOpcode::load8 };
+	static const MachineInstOpcode storeOps[] = { MachineInstOpcode::storesd, MachineInstOpcode::storess, MachineInstOpcode::store64, MachineInstOpcode::store32, MachineInstOpcode::store16, MachineInstOpcode::store8 };
+	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
+	static const RegisterName regvars[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
+
+	int callArgsSize = 0;
+
+	// Move arguments into place
+	for (size_t i = 0; i < node->args.size(); i++)
+	{
+		IRValue* arg = node->args[i];
+
+		bool isMemSrc = isConstantFP(arg) || isGlobalVariable(arg);
+		int dataSizeType = getDataSizeType(arg->type);
+		bool isXmm = dataSizeType < 2;
+
+		// First four go to registers
+		if (i < 4)
+		{
+			MachineOperand dst;
+			dst.type = MachineOperandType::reg;
+			if (isXmm)
+				dst.registerIndex = (int)RegisterName::xmm0 + (int)i;
+			else
+				dst.registerIndex = (int)regvars[i];
+
+			auto inst = context->newMachineInst();
+			inst->opcode = isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType];
+			inst->operands.push_back(dst);
+			pushValueOperand(inst, arg, dataSizeType);
+			bb->code.push_back(inst);
+		}
+		else
+		{
+			MachineOperand dst;
+			dst.type = MachineOperandType::stackOffset;
+			dst.stackOffset = (int)(i * 8);
+
+			if (isMemSrc)
+			{
+				MachineOperand tmpreg;
+				tmpreg.type = MachineOperandType::reg;
+				tmpreg.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
+
+				auto loadinst = context->newMachineInst();
+				loadinst->opcode = loadOps[dataSizeType];
+				loadinst->operands.push_back(tmpreg);
+				pushValueOperand(loadinst, arg, dataSizeType);
+				bb->code.push_back(loadinst);
+
+				auto storeinst = context->newMachineInst();
+				storeinst->opcode = storeOps[dataSizeType];
+				storeinst->operands.push_back(dst);
+				storeinst->operands.push_back(tmpreg);
+				bb->code.push_back(storeinst);
+			}
+			else
+			{
+				auto inst = context->newMachineInst();
+				inst->opcode = storeOps[dataSizeType];
+				inst->operands.push_back(dst);
+				pushValueOperand(inst, arg, dataSizeType);
+				bb->code.push_back(inst);
+			}
+		}
+
+		callArgsSize += 8;
+	}
+
+	mfunc->maxCallArgsSize = std::max(mfunc->maxCallArgsSize, callArgsSize);
+
+	// Call the function
+	{
+		MachineOperand dst;
+
+		IRFunction* func = dynamic_cast<IRFunction*>(node->func);
+		if (func)
+		{
+			dst.type = MachineOperandType::func;
+			dst.func = func;
+		}
+		else
+		{
+			dst.type = MachineOperandType::reg;
+			dst.registerIndex = (int)RegisterName::rax;
+
+			auto inst = context->newMachineInst();
+			inst->opcode = MachineInstOpcode::mov64;
+			inst->operands.push_back(dst);
+			inst->operands.push_back(instRegister[node->func]);
+			bb->code.push_back(inst);
+		}
+
+		auto inst = context->newMachineInst();
+		inst->opcode = MachineInstOpcode::call;
+		inst->operands.push_back(dst);
+		bb->code.push_back(inst);
+	}
+
+	// Move return value to virtual register
+	if (node->type != context->getVoidTy())
+	{
+		int dataSizeType = getDataSizeType(node->type);
+		bool isXmm = dataSizeType < 2;
+
+		MachineOperand src;
+		src.type = MachineOperandType::reg;
+		src.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
+
+		auto dst = newReg(node);
+
+		auto inst = context->newMachineInst();
+		inst->opcode = movOps[dataSizeType];
+		inst->operands.push_back(dst);
+		inst->operands.push_back(src);
+		bb->code.push_back(inst);
+	}
+}
+
+void MachineInstSelection::callUnix64(IRInstCall* node)
+{
+	static const MachineInstOpcode loadOps[] = { MachineInstOpcode::loadsd, MachineInstOpcode::loadss, MachineInstOpcode::load64, MachineInstOpcode::load32, MachineInstOpcode::load16, MachineInstOpcode::load8 };
+	static const MachineInstOpcode storeOps[] = { MachineInstOpcode::storesd, MachineInstOpcode::storess, MachineInstOpcode::store64, MachineInstOpcode::store32, MachineInstOpcode::store16, MachineInstOpcode::store8 };
+	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
+	static const RegisterName regvars[] = { RegisterName::rdi, RegisterName::rsi, RegisterName::rdx, RegisterName::rcx, RegisterName::r8, RegisterName::r9 };
+
+	const int numRegisterArgs = 6;
+	const int numXmmRegisterArgs = 8;
+	int nextRegisterArg = 0;
+	int nextXmmRegisterArg = 0;
+	int callArgsSize = 0;
+
+	// Move arguments into place
+	for (size_t i = 0; i < node->args.size(); i++)
+	{
+		IRValue* arg = node->args[i];
+
+		bool isMemSrc = isConstantFP(arg) || isGlobalVariable(arg);
+		int dataSizeType = getDataSizeType(arg->type);
+		bool isXmm = dataSizeType < 2;
+		bool isRegisterArg = (isXmm && nextXmmRegisterArg < numXmmRegisterArgs) || (!isXmm && nextRegisterArg < numRegisterArgs);
+
+		if (isRegisterArg)
+		{
+			MachineOperand dst;
+			dst.type = MachineOperandType::reg;
+			if (isXmm)
+				dst.registerIndex = (int)RegisterName::xmm0 + (nextXmmRegisterArg++);
+			else
+				dst.registerIndex = (int)regvars[nextRegisterArg++];
+
+			auto inst = context->newMachineInst();
+			inst->opcode = isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType];
+			inst->operands.push_back(dst);
+			pushValueOperand(inst, arg, dataSizeType);
+			bb->code.push_back(inst);
+		}
+		else
+		{
+			MachineOperand dst;
+			dst.type = MachineOperandType::stackOffset;
+			dst.stackOffset = (int)(i * 8);
+
+			if (isMemSrc)
+			{
+				MachineOperand tmpreg;
+				tmpreg.type = MachineOperandType::reg;
+				tmpreg.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
+
+				auto loadinst = context->newMachineInst();
+				loadinst->opcode = loadOps[dataSizeType];
+				loadinst->operands.push_back(tmpreg);
+				pushValueOperand(loadinst, arg, dataSizeType);
+				bb->code.push_back(loadinst);
+
+				auto storeinst = context->newMachineInst();
+				storeinst->opcode = storeOps[dataSizeType];
+				storeinst->operands.push_back(dst);
+				storeinst->operands.push_back(tmpreg);
+				bb->code.push_back(storeinst);
+			}
+			else
+			{
+				auto inst = context->newMachineInst();
+				inst->opcode = storeOps[dataSizeType];
+				inst->operands.push_back(dst);
+				pushValueOperand(inst, arg, dataSizeType);
+				bb->code.push_back(inst);
+			}
+
+			callArgsSize += 8;
+		}
+	}
+
+	mfunc->maxCallArgsSize = std::max(mfunc->maxCallArgsSize, callArgsSize);
+
+	// Call the function
+	{
+		MachineOperand dst;
+
+		IRFunction* func = dynamic_cast<IRFunction*>(node->func);
+		if (func)
+		{
+			dst.type = MachineOperandType::func;
+			dst.func = func;
+		}
+		else
+		{
+			dst.type = MachineOperandType::reg;
+			dst.registerIndex = (int)RegisterName::rax;
+
+			auto inst = context->newMachineInst();
+			inst->opcode = MachineInstOpcode::mov64;
+			inst->operands.push_back(dst);
+			inst->operands.push_back(instRegister[node->func]);
+			bb->code.push_back(inst);
+		}
+
+		auto inst = context->newMachineInst();
+		inst->opcode = MachineInstOpcode::call;
+		inst->operands.push_back(dst);
+		bb->code.push_back(inst);
+	}
+
+	// Move return value to virtual register
+	if (node->type != context->getVoidTy())
+	{
+		int dataSizeType = getDataSizeType(node->type);
+		bool isXmm = dataSizeType < 2;
+
+		MachineOperand src;
+		src.type = MachineOperandType::reg;
+		src.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
+
+		auto dst = newReg(node);
+
+		auto inst = context->newMachineInst();
+		inst->opcode = movOps[dataSizeType];
+		inst->operands.push_back(dst);
+		inst->operands.push_back(src);
+		bb->code.push_back(inst);
+	}
 }
 
 void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpcode opSet)

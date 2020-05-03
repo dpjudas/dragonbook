@@ -84,6 +84,9 @@ private:
 	bool isFunction(IRType* type) const { return dynamic_cast<IRFunctionType*>(type); }
 	bool isStruct(IRType* type) const { return dynamic_cast<IRStructType*>(type); }
 
+	void callWin64(IRInstCall* node);
+	void callUnix64(IRInstCall* node);
+
 	void simpleCompareInst(IRInstBinary* node, MachineInstOpcode opSet);
 	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
 	void shiftBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
