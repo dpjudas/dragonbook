@@ -7,105 +7,6 @@ void RegisterAllocator::run(IRContext* context, MachineFunction* func)
 	ra.run();
 }
 
-void RegisterAllocator::setupArgsWin64()
-{
-	static const RegisterName registerArgs[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
-	const int numRegisterArgs = 4;
-
-	MachineOperand stacklocation;
-	stacklocation.type = MachineOperandType::frameOffset;
-	stacklocation.frameOffset = 8;
-
-	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
-	for (int i = 0; i < (int)functype->args.size(); i++)
-	{
-		int vregindex = (int)RegisterName::vregstart + i;
-
-		reginfo[vregindex].stacklocation = stacklocation;
-		stacklocation.frameOffset += 8;
-
-		if (i < numRegisterArgs)
-		{
-			int pregIndex;
-			if (reginfo[vregindex].cls == MachineRegClass::gp)
-				pregIndex = (int)registerArgs[i];
-			else
-				pregIndex = (int)RegisterName::xmm0 + (int)i;
-
-			reginfo[vregindex].spilled = false;
-			reginfo[vregindex].physreg = pregIndex;
-			reginfo[pregIndex].vreg = vregindex;
-
-			setAsMostRecentlyUsed(pregIndex);
-		}
-	}
-
-	volatileRegs =
-	{
-		RegisterName::rax, RegisterName::rcx, RegisterName::rdx,
-		RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5
-	};
-}
-
-void RegisterAllocator::setupArgsUnix64()
-{
-	static const RegisterName registerArgs[] = { RegisterName::rdi, RegisterName::rsi, RegisterName::rdx, RegisterName::rcx, RegisterName::r8, RegisterName::r9 };
-	const int numRegisterArgs = 6;
-	const int numXmmRegisterArgs = 8;
-	int nextRegisterArg = 0;
-	int nextXmmRegisterArg = 0;
-
-	MachineOperand stacklocation;
-	stacklocation.type = MachineOperandType::frameOffset;
-	stacklocation.frameOffset = 8;
-
-	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
-	for (int i = 0; i < (int)functype->args.size(); i++)
-	{
-		int vregindex = (int)RegisterName::vregstart + i;
-
-		if (reginfo[vregindex].cls == MachineRegClass::gp)
-		{
-			if (nextRegisterArg < numRegisterArgs)
-			{
-				int pregIndex = (int)registerArgs[nextRegisterArg++];
-				reginfo[vregindex].spilled = false;
-				reginfo[vregindex].physreg = pregIndex;
-				reginfo[pregIndex].vreg = vregindex;
-				setAsMostRecentlyUsed(pregIndex);
-			}
-			else
-			{
-				reginfo[vregindex].stacklocation = stacklocation;
-				stacklocation.frameOffset += 8;
-			}
-		}
-		else
-		{
-			if (nextXmmRegisterArg < numXmmRegisterArgs)
-			{
-				int pregIndex = (int)RegisterName::xmm0 + (int)(nextXmmRegisterArg++);
-				reginfo[vregindex].spilled = false;
-				reginfo[vregindex].physreg = pregIndex;
-				reginfo[pregIndex].vreg = vregindex;
-				setAsMostRecentlyUsed(pregIndex);
-			}
-			else
-			{
-				reginfo[vregindex].stacklocation = stacklocation;
-				stacklocation.frameOffset += 8;
-			}
-		}
-	}
-
-	volatileRegs =
-	{
-		RegisterName::rax, RegisterName::rcx, RegisterName::rdx, RegisterName::rdi, RegisterName::rsi,
-		RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5, RegisterName::xmm6, RegisterName::xmm7,
-		RegisterName::xmm8, RegisterName::xmm9, RegisterName::xmm10, RegisterName::xmm11, RegisterName::xmm12, RegisterName::xmm13, RegisterName::xmm14, RegisterName::xmm15
-	};
-}
-
 void RegisterAllocator::run()
 {
 	createRegisterInfo();
@@ -634,4 +535,103 @@ void RegisterAllocator::addLiveReference(size_t vregIndex, MachineBasicBlock* bb
 	{
 		vreg.liveReferences = std::make_unique<RARegisterLiveReference>(bb);
 	}
+}
+
+void RegisterAllocator::setupArgsWin64()
+{
+	static const RegisterName registerArgs[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
+	const int numRegisterArgs = 4;
+
+	MachineOperand stacklocation;
+	stacklocation.type = MachineOperandType::frameOffset;
+	stacklocation.frameOffset = 8;
+
+	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
+	for (int i = 0; i < (int)functype->args.size(); i++)
+	{
+		int vregindex = (int)RegisterName::vregstart + i;
+
+		reginfo[vregindex].stacklocation = stacklocation;
+		stacklocation.frameOffset += 8;
+
+		if (i < numRegisterArgs)
+		{
+			int pregIndex;
+			if (reginfo[vregindex].cls == MachineRegClass::gp)
+				pregIndex = (int)registerArgs[i];
+			else
+				pregIndex = (int)RegisterName::xmm0 + (int)i;
+
+			reginfo[vregindex].spilled = false;
+			reginfo[vregindex].physreg = pregIndex;
+			reginfo[pregIndex].vreg = vregindex;
+
+			setAsMostRecentlyUsed(pregIndex);
+		}
+	}
+
+	volatileRegs =
+	{
+		RegisterName::rax, RegisterName::rcx, RegisterName::rdx,
+		RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5
+	};
+}
+
+void RegisterAllocator::setupArgsUnix64()
+{
+	static const RegisterName registerArgs[] = { RegisterName::rdi, RegisterName::rsi, RegisterName::rdx, RegisterName::rcx, RegisterName::r8, RegisterName::r9 };
+	const int numRegisterArgs = 6;
+	const int numXmmRegisterArgs = 8;
+	int nextRegisterArg = 0;
+	int nextXmmRegisterArg = 0;
+
+	MachineOperand stacklocation;
+	stacklocation.type = MachineOperandType::frameOffset;
+	stacklocation.frameOffset = 8;
+
+	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
+	for (int i = 0; i < (int)functype->args.size(); i++)
+	{
+		int vregindex = (int)RegisterName::vregstart + i;
+
+		if (reginfo[vregindex].cls == MachineRegClass::gp)
+		{
+			if (nextRegisterArg < numRegisterArgs)
+			{
+				int pregIndex = (int)registerArgs[nextRegisterArg++];
+				reginfo[vregindex].spilled = false;
+				reginfo[vregindex].physreg = pregIndex;
+				reginfo[pregIndex].vreg = vregindex;
+				setAsMostRecentlyUsed(pregIndex);
+			}
+			else
+			{
+				reginfo[vregindex].stacklocation = stacklocation;
+				stacklocation.frameOffset += 8;
+			}
+		}
+		else
+		{
+			if (nextXmmRegisterArg < numXmmRegisterArgs)
+			{
+				int pregIndex = (int)RegisterName::xmm0 + (int)(nextXmmRegisterArg++);
+				reginfo[vregindex].spilled = false;
+				reginfo[vregindex].physreg = pregIndex;
+				reginfo[pregIndex].vreg = vregindex;
+				setAsMostRecentlyUsed(pregIndex);
+			}
+			else
+			{
+				reginfo[vregindex].stacklocation = stacklocation;
+				stacklocation.frameOffset += 8;
+			}
+		}
+	}
+
+	volatileRegs =
+	{
+		RegisterName::rax, RegisterName::rcx, RegisterName::rdx, RegisterName::rdi, RegisterName::rsi,
+		RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5, RegisterName::xmm6, RegisterName::xmm7,
+		RegisterName::xmm8, RegisterName::xmm9, RegisterName::xmm10, RegisterName::xmm11, RegisterName::xmm12, RegisterName::xmm13, RegisterName::xmm14, RegisterName::xmm15
+	};
 }
