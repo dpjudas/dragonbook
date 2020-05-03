@@ -2,6 +2,7 @@
 
 #include "MachineInst.h"
 #include <list>
+#include <set>
 
 class RARegisterLiveReference
 {
@@ -15,10 +16,12 @@ public:
 
 struct RARegisterInfo
 {
+	static MachineOperand nullStackLocation() { MachineOperand op; op.type = MachineOperandType::spillOffset; op.spillOffset = -1; return op; }
+
 	MachineRegClass cls = MachineRegClass::reserved;
 	int vreg = -1;
 	int physreg = -1;
-	int stackoffset = -1;
+	MachineOperand stacklocation = nullStackLocation();
 	bool spilled = true;
 
 	std::unique_ptr<RARegisterLiveReference> liveReferences;
@@ -39,8 +42,11 @@ private:
 	RegisterAllocator(IRContext* context, MachineFunction* func) : context(context), func(func) { }
 	void run();
 
-	void emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize, bool dsa);
-	void emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize, bool dsa);
+	void setupArgsWin64();
+	void setupArgsUnix64();
+
+	void emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackAdjustment, bool dsa);
+	void emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackAdjustment, bool dsa);
 
 	bool isFloat(IRType* type) const { return dynamic_cast<IRFloatType*>(type); }
 	bool isDouble(IRType* type) const { return dynamic_cast<IRDoubleType*>(type); }
@@ -64,6 +70,9 @@ private:
 
 	void runLiveAnalysis();
 	void addLiveReference(size_t vregIndex, MachineBasicBlock* bb);
+
+	std::vector<RegisterName> volatileRegs;
+	std::set<RegisterName> usedRegs;
 
 	IRContext* context;
 	MachineFunction* func;

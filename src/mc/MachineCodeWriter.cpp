@@ -1098,10 +1098,22 @@ void MachineCodeWriter::setM(X64Instruction& x64inst, const MachineOperand& oper
 		x64inst.rm = getPhysReg(operand);
 		x64inst.mod = 3;
 	}
+	else if (operand.type == MachineOperandType::frameOffset)
+	{
+		bool dsa = sfunc->dynamicStackAllocations;
+		x64inst.disp = sfunc->frameBaseOffset + operand.frameOffset;
+		x64inst.dispsize = (x64inst.disp > -127 && x64inst.disp < 127) ? 8 : 32;
+		x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
+		x64inst.rm = 4;
+		x64inst.scale = 0;
+		x64inst.index = 4;
+		x64inst.base = (int)(dsa ? RegisterName::rbp : RegisterName::rsp);
+		x64inst.sib = true;
+	}
 	else if (operand.type == MachineOperandType::spillOffset)
 	{
 		bool dsa = sfunc->dynamicStackAllocations;
-		x64inst.disp = sfunc->fixedFrameSize - operand.spillOffset;
+		x64inst.disp = sfunc->spillBaseOffset + operand.spillOffset;
 		x64inst.dispsize = (x64inst.disp > -127 && x64inst.disp < 127) ? 8 : 32;
 		x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
 		x64inst.rm = 4;

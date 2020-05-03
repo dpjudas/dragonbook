@@ -60,7 +60,7 @@ std::vector<uint16_t> UnwindInfoWindows::create(MachineFunction* func)
 		else if (inst->unwindHint == MachineUnwindHint::RegisterStackLocation)
 		{
 			uint32_t vecSize = 16;
-			int stackoffset = inst->operands[0].spillOffset;
+			int stackoffset = inst->operands[0].stackOffset;
 			if (stackoffset / vecSize < (1 << 16))
 			{
 				opoffset = (uint32_t)inst->unwindOffset;
@@ -79,6 +79,13 @@ std::vector<uint16_t> UnwindInfoWindows::create(MachineFunction* func)
 				codes.push_back(opoffset | (opcode << 8) | (opinfo << 12));
 			}
 		}
+		else if (inst->unwindHint == MachineUnwindHint::SaveFrameRegister)
+		{
+			opoffset = 0;
+			opcode = UWOP_SET_FPREG;
+			opinfo = inst->operands[0].registerIndex;
+			codes.push_back(opoffset | (opcode << 8) | (opinfo << 12));
+		}
 
 		if (inst->opcode != MachineInstOpcode::jmp)
 			lastOffset = inst->unwindOffset;
@@ -89,12 +96,6 @@ std::vector<uint16_t> UnwindInfoWindows::create(MachineFunction* func)
 	uint16_t version = 1, flags = 0, frameRegister = 0, frameOffset = 0;
 	uint16_t sizeOfProlog = (uint16_t)lastOffset;
 	uint16_t countOfCodes = (uint16_t)codes.size();
-
-	if (func->dynamicStackAllocations)
-	{
-		frameRegister = (int)RegisterName::rbp;
-		frameOffset = func->fixedFrameSize / 16;
-	}
 
 	std::vector<uint16_t> info;
 	info.push_back(version | (flags << 3) | (sizeOfProlog << 8));

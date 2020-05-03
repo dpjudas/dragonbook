@@ -7,29 +7,28 @@ void RegisterAllocator::run(IRContext* context, MachineFunction* func)
 	ra.run();
 }
 
-void RegisterAllocator::run()
+void RegisterAllocator::setupArgsWin64()
 {
-	createRegisterInfo();
-	runLiveAnalysis();
+	static const RegisterName registerArgs[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
+	const int numRegisterArgs = 4;
 
-	//static const RegisterName unixregvars[] = { RegisterName::rdi, RegisterName::rsi, RegisterName::rdx, RegisterName::rcx, RegisterName::r8, RegisterName::r9 };
-	static const RegisterName win64regvars[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
-
-	int argoffset = -8 * 8; // 8 pushed registers
+	MachineOperand stacklocation;
+	stacklocation.type = MachineOperandType::frameOffset;
+	stacklocation.frameOffset = 8;
 
 	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
 	for (int i = 0; i < (int)functype->args.size(); i++)
 	{
-		argoffset -= 8;
-
 		int vregindex = (int)RegisterName::vregstart + i;
-		reginfo[vregindex].stackoffset = argoffset;
 
-		if (i < 4)
+		reginfo[vregindex].stacklocation = stacklocation;
+		stacklocation.frameOffset += 8;
+
+		if (i < numRegisterArgs)
 		{
 			int pregIndex;
 			if (reginfo[vregindex].cls == MachineRegClass::gp)
-				pregIndex = (int)win64regvars[i];
+				pregIndex = (int)registerArgs[i];
 			else
 				pregIndex = (int)RegisterName::xmm0 + (int)i;
 
@@ -41,6 +40,83 @@ void RegisterAllocator::run()
 		}
 	}
 
+	volatileRegs =
+	{
+		RegisterName::rax, RegisterName::rcx, RegisterName::rdx,
+		RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5
+	};
+}
+
+void RegisterAllocator::setupArgsUnix64()
+{
+	static const RegisterName registerArgs[] = { RegisterName::rdi, RegisterName::rsi, RegisterName::rdx, RegisterName::rcx, RegisterName::r8, RegisterName::r9 };
+	const int numRegisterArgs = 6;
+	const int numXmmRegisterArgs = 8;
+	int nextRegisterArg = 0;
+	int nextXmmRegisterArg = 0;
+
+	MachineOperand stacklocation;
+	stacklocation.type = MachineOperandType::frameOffset;
+	stacklocation.frameOffset = 8;
+
+	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
+	for (int i = 0; i < (int)functype->args.size(); i++)
+	{
+		int vregindex = (int)RegisterName::vregstart + i;
+
+		if (reginfo[vregindex].cls == MachineRegClass::gp)
+		{
+			if (nextRegisterArg < numRegisterArgs)
+			{
+				int pregIndex = (int)registerArgs[nextRegisterArg++];
+				reginfo[vregindex].spilled = false;
+				reginfo[vregindex].physreg = pregIndex;
+				reginfo[pregIndex].vreg = vregindex;
+				setAsMostRecentlyUsed(pregIndex);
+			}
+			else
+			{
+				reginfo[vregindex].stacklocation = stacklocation;
+				stacklocation.frameOffset += 8;
+			}
+		}
+		else
+		{
+			if (nextXmmRegisterArg < numXmmRegisterArgs)
+			{
+				int pregIndex = (int)RegisterName::xmm0 + (int)(nextXmmRegisterArg++);
+				reginfo[vregindex].spilled = false;
+				reginfo[vregindex].physreg = pregIndex;
+				reginfo[pregIndex].vreg = vregindex;
+				setAsMostRecentlyUsed(pregIndex);
+			}
+			else
+			{
+				reginfo[vregindex].stacklocation = stacklocation;
+				stacklocation.frameOffset += 8;
+			}
+		}
+	}
+
+	volatileRegs =
+	{
+		RegisterName::rax, RegisterName::rcx, RegisterName::rdx, RegisterName::rdi, RegisterName::rsi,
+		RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5, RegisterName::xmm6, RegisterName::xmm7,
+		RegisterName::xmm8, RegisterName::xmm9, RegisterName::xmm10, RegisterName::xmm11, RegisterName::xmm12, RegisterName::xmm13, RegisterName::xmm14, RegisterName::xmm15
+	};
+}
+
+void RegisterAllocator::run()
+{
+	createRegisterInfo();
+	runLiveAnalysis();
+
+#ifdef WIN32
+	setupArgsWin64();
+#else
+	setupArgsUnix64();
+#endif
+
 	for (size_t i = 0; i < func->basicBlocks.size(); i++)
 	{
 		MachineBasicBlock* bb = func->basicBlocks[i];
@@ -48,9 +124,7 @@ void RegisterAllocator::run()
 		{
 			if (inst->opcode == MachineInstOpcode::call)
 			{
-				//std::vector<RegisterName> volatileRegsUnix = { RegisterName::rax, RegisterName::rcx, RegisterName::rdx, RegisterName::rdi, RegisterName::rsi, RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5 };
-				std::vector<RegisterName> volatileRegsWin64 = { RegisterName::rax, RegisterName::rcx, RegisterName::rdx, RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5 };
-				for (RegisterName regName : volatileRegsWin64)
+				for (RegisterName regName : volatileRegs)
 				{
 					int pregIndex = (int)regName;
 					if (reginfo[pregIndex].vreg != -1)
@@ -93,6 +167,17 @@ void RegisterAllocator::run()
 				}
 			}
 
+			if ((inst->opcode >= MachineInstOpcode::idiv64 && inst->opcode <= MachineInstOpcode::idiv8) ||
+				(inst->opcode >= MachineInstOpcode::div64 && inst->opcode <= MachineInstOpcode::div8))
+			{
+				usedRegs.insert(RegisterName::rax);
+				usedRegs.insert(RegisterName::rdx);
+			}
+			else if (!inst->operands.empty() && inst->operands.front().type == MachineOperandType::reg)
+			{
+				usedRegs.insert((RegisterName)inst->operands.front().registerIndex);
+			}
+
 			if (inst->opcode == MachineInstOpcode::jz || inst->opcode == MachineInstOpcode::jmp)
 			{
 				if (inst->operands[0].bb == func->epilog)
@@ -112,20 +197,37 @@ void RegisterAllocator::run()
 		emittedInstructions.clear();
 	}
 
-	// [funcargs] [retaddr] <framebegin> [spill area] [dsa/alloca area] [callargs] <rsp>
-	func->fixedFrameSize = nextStackOffset + func->maxCallArgsSize;
+	for (RegisterName reg : volatileRegs)
+		usedRegs.erase(reg);
 
-	// To do: only save the registers we used
-	//std::vector<RegisterName> savedRegsUnix = { RegisterName::rbx, RegisterName::rbp, RegisterName::r12, RegisterName::r13, RegisterName::r14, RegisterName::r15 };
-	std::vector<RegisterName> savedRegsWin64 = { RegisterName::rbx, RegisterName::rbp, RegisterName::rdi, RegisterName::rsi, RegisterName::r12, RegisterName::r13, RegisterName::r14, RegisterName::r15 };
-	std::vector<RegisterName> savedXmmRegs = { RegisterName::xmm6, RegisterName::xmm7, RegisterName::xmm8, RegisterName::xmm9, RegisterName::xmm10, RegisterName::xmm11, RegisterName::xmm12, RegisterName::xmm13, RegisterName::xmm14, RegisterName::xmm15 };
-	func->fixedFrameSize += (int)savedXmmRegs.size() * 8;
-	func->fixedFrameSize = (func->fixedFrameSize + 15) / 16 * 16; // 16-byte align frame
-	emitProlog(savedRegsWin64, savedXmmRegs, func->fixedFrameSize, func->dynamicStackAllocations);
-	emitEpilog(savedRegsWin64, savedXmmRegs, func->fixedFrameSize, func->dynamicStackAllocations);
+	std::vector<RegisterName> savedRegs, savedXmmRegs;
+	for (RegisterName reg : usedRegs)
+	{
+		if (reg < RegisterName::xmm0)
+		{
+			savedRegs.push_back(reg);
+		}
+		else
+		{
+			savedXmmRegs.push_back(reg);
+		}
+	}
+
+	// [funcargs] [retaddr] <framebase> [save/spill area] <spillbase> [dsa/alloca area] [callargs] <rsp>
+
+	int pushStackAdjustment = (int)savedRegs.size() * 8;
+	int frameSize = pushStackAdjustment + nextStackOffset + func->maxCallArgsSize + (int)savedXmmRegs.size() * 16;
+	frameSize = (frameSize + 7) / 16 * 16 + 8; // 16-byte align frame (after call return address)
+	int frameStackAdjustment = frameSize - pushStackAdjustment;
+
+	func->frameBaseOffset = pushStackAdjustment + frameStackAdjustment;
+	func->spillBaseOffset = (func->maxCallArgsSize + 7) / 16 * 16 + 8;
+
+	emitProlog(savedRegs, savedXmmRegs, frameStackAdjustment, func->dynamicStackAllocations);
+	emitEpilog(savedRegs, savedXmmRegs, frameStackAdjustment, func->dynamicStackAllocations);
 }
 
-void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize, bool dsa)
+void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackAdjustment, bool dsa)
 {
 	for (RegisterName physReg : savedRegs)
 	{
@@ -148,7 +250,7 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 
 		MachineOperand src;
 		src.type = MachineOperandType::imm;
-		src.immvalue = stackSize;
+		src.immvalue = stackAdjustment;
 
 		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::sub64;
@@ -163,7 +265,7 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 	{
 		MachineOperand dst;
 		dst.type = MachineOperandType::stackOffset;
-		dst.stackOffset = i * 8;
+		dst.stackOffset = i * 16;
 
 		MachineOperand src;
 		src.type = MachineOperandType::reg;
@@ -208,7 +310,7 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 	}
 }
 
-void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackSize, bool dsa)
+void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackAdjustment, bool dsa)
 {
 	if (dsa)
 	{
@@ -236,7 +338,7 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 
 		MachineOperand src;
 		src.type = MachineOperandType::stackOffset;
-		src.spillOffset = i * 8;
+		src.stackOffset = i * 16;
 
 		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::loadsd;
@@ -254,7 +356,7 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 
 		MachineOperand src;
 		src.type = MachineOperandType::imm;
-		src.immvalue = stackSize;
+		src.immvalue = stackAdjustment;
 
 		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::add64;
@@ -366,7 +468,8 @@ void RegisterAllocator::killVirtRegister(int vregIndex)
 	vreg.spilled = true;
 	vreg.physreg = -1;
 
-	freeStackOffsets.push_back(vreg.stackoffset);
+	if (vreg.stacklocation.type == MachineOperandType::spillOffset)
+		freeStackOffsets.push_back(vreg.stacklocation.stackOffset);
 }
 
 void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
@@ -379,7 +482,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		assignVirt2StackSlot(vregIndex);
 	}
 
-	if (vreg.spilled && vreg.stackoffset == -1)
+	if (vreg.spilled && vreg.stacklocation.spillOffset == -1)
 	{
 		vreg.physreg = pregIndex;
 		vreg.spilled = false;
@@ -392,9 +495,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		dest.type = MachineOperandType::reg;
 		dest.registerIndex = pregIndex;
 
-		MachineOperand src;
-		src.type = MachineOperandType::spillOffset;
-		src.spillOffset = vreg.stackoffset;
+		MachineOperand src = vreg.stacklocation;
 
 		auto inst = context->newMachineInst();
 		inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::load64 : MachineInstOpcode::loadsd;
@@ -402,6 +503,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->operands.push_back(src);
 		inst->comment = "load vreg " + std::to_string(vregIndex);
 		emittedInstructions.push_back(inst);
+		usedRegs.insert((RegisterName)pregIndex);
 
 		physreg.vreg = vregIndex;
 		vreg.physreg = pregIndex;
@@ -425,6 +527,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->operands.push_back(src);
 		inst->comment = "move vreg " + std::to_string(vregIndex);
 		emittedInstructions.push_back(inst);
+		usedRegs.insert((RegisterName)pregIndex);
 
 		reginfo[vreg.physreg].vreg = -1;
 		physreg.vreg = vregIndex;
@@ -440,25 +543,23 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 
 	auto& physreg = reginfo[vreg.physreg];
 
-	if (vreg.stackoffset == -1)
+	if (vreg.stacklocation.spillOffset == -1)
 	{
 		if (freeStackOffsets.empty())
 		{
 			nextStackOffset += 8;
-			vreg.stackoffset = nextStackOffset;
+			vreg.stacklocation.spillOffset = nextStackOffset;
 		}
 		else
 		{
-			vreg.stackoffset = freeStackOffsets.back();
+			vreg.stacklocation.spillOffset = freeStackOffsets.back();
 			freeStackOffsets.pop_back();
 		}
 	}
 
 	// emit move from register to stack:
 
-	MachineOperand dest;
-	dest.type = MachineOperandType::spillOffset;
-	dest.spillOffset = vreg.stackoffset;
+	MachineOperand dest = vreg.stacklocation;
 
 	MachineOperand src;
 	src.type = MachineOperandType::reg;

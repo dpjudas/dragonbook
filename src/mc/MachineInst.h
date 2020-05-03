@@ -39,7 +39,7 @@ enum class MachineInstOpcode
 
 enum class MachineOperandType
 {
-	reg, constant, spillOffset, stackOffset, imm, basicblock, func, global
+	reg, constant, frameOffset, spillOffset, stackOffset, imm, basicblock, func, global
 };
 
 class MachineOperand
@@ -50,6 +50,7 @@ public:
 	{
 		int registerIndex;
 		int constantIndex;
+		int frameOffset;
 		int spillOffset;
 		int stackOffset;
 		uint64_t immvalue;
@@ -128,7 +129,8 @@ public:
 	std::vector<MachineConstant> constants;
 	std::vector<MachineRegister> registers;
 	int maxCallArgsSize = 0;
-	int fixedFrameSize = 0;
+	int frameBaseOffset = 0;
+	int spillBaseOffset = 0;
 	bool dynamicStackAllocations = false;
 };
 
