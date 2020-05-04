@@ -117,12 +117,13 @@ void RegisterAllocator::run()
 	// [funcargs] [retaddr] <framebase> [save/spill area] <spillbase> [dsa/alloca area] [callargs] <rsp>
 
 	int pushStackAdjustment = (int)savedRegs.size() * 8;
-	int frameSize = pushStackAdjustment + nextStackOffset + func->maxCallArgsSize + (int)savedXmmRegs.size() * 16;
-	frameSize = (frameSize + 7) / 16 * 16 + 8; // 16-byte align frame (after call return address)
+	int spillAreaSize = (int)savedXmmRegs.size() * 16 + (nextStackOffset + 15) / 16 * 16; // 16-byte align spill area
+	int callargsSize = func->maxCallArgsSize > 0 ? (func->maxCallArgsSize + 7) / 16 * 16 + 8 : 0; // 16-byte align while taking the call return address into account
+	int frameSize = pushStackAdjustment + spillAreaSize + callargsSize;
 	int frameStackAdjustment = frameSize - pushStackAdjustment;
 
-	func->frameBaseOffset = pushStackAdjustment + frameStackAdjustment;
-	func->spillBaseOffset = (func->maxCallArgsSize + 7) / 16 * 16 + 8;
+	func->frameBaseOffset = frameSize;
+	func->spillBaseOffset = callargsSize;
 
 	emitProlog(savedRegs, savedXmmRegs, frameStackAdjustment, func->dynamicStackAllocations);
 	emitEpilog(savedRegs, savedXmmRegs, frameStackAdjustment, func->dynamicStackAllocations);
@@ -144,6 +145,7 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 	}
 
 	// sub rsp, stacksize
+	if (stackAdjustment > 0)
 	{
 		MachineOperand dst;
 		dst.type = MachineOperandType::reg;
@@ -161,12 +163,12 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 		func->prolog->code.push_back(inst);
 	}
 
-	int i = 0;
+	int i = 1;
 	for (RegisterName physReg : savedXmmRegs)
 	{
 		MachineOperand dst;
-		dst.type = MachineOperandType::stackOffset;
-		dst.stackOffset = i * 16;
+		dst.type = MachineOperandType::frameOffset;
+		dst.frameOffset = -(int)savedRegs.size() * 8 - i * 16;
 
 		MachineOperand src;
 		src.type = MachineOperandType::reg;
@@ -230,7 +232,7 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 		func->epilog->code.push_back(inst);
 	}
 
-	int i = 0;
+	int i = 1;
 	for (RegisterName physReg : savedXmmRegs)
 	{
 		MachineOperand dst;
@@ -238,8 +240,8 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 		dst.registerIndex = (int)physReg;
 
 		MachineOperand src;
-		src.type = MachineOperandType::stackOffset;
-		src.stackOffset = i * 16;
+		src.type = MachineOperandType::frameOffset;
+		src.frameOffset = -(int)savedRegs.size() * 8 - i * 16;
 
 		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::loadsd;
@@ -250,6 +252,7 @@ void RegisterAllocator::emitEpilog(const std::vector<RegisterName>& savedRegs, c
 	}
 
 	// add rsp, stacksize
+	if (stackAdjustment > 0)
 	{
 		MachineOperand dst;
 		dst.type = MachineOperandType::reg;
@@ -369,7 +372,7 @@ void RegisterAllocator::killVirtRegister(int vregIndex)
 	vreg.spilled = true;
 	vreg.physreg = -1;
 
-	if (vreg.stacklocation.type == MachineOperandType::spillOffset)
+	if (vreg.stacklocation.type == MachineOperandType::spillOffset && vreg.stacklocation.spillOffset != -1)
 		freeStackOffsets.push_back(vreg.stacklocation.stackOffset);
 }
 
@@ -448,8 +451,8 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 	{
 		if (freeStackOffsets.empty())
 		{
-			nextStackOffset += 8;
 			vreg.stacklocation.spillOffset = nextStackOffset;
+			nextStackOffset += 8;
 		}
 		else
 		{

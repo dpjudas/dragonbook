@@ -1311,7 +1311,7 @@ void MachineInstSelection::pushValueOperand(MachineInst* inst, IRValue* operand,
 		else // if (dataSizeType == 1)
 			inst->operands.push_back(newConstant(getConstantValueFloat(operand)));
 	}
-	if (isConstantInt(operand))
+	else if (isConstantInt(operand))
 	{
 		inst->operands.push_back(newImm(getConstantValueInt(operand)));
 	}

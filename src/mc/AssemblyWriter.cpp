@@ -171,11 +171,11 @@ void AssemblyWriter::writeInst(const char* name, MachineInst* inst)
 		switch (operand.type)
 		{
 		case MachineOperandType::reg: output << (operand.registerIndex < 32 ? regname[operand.registerIndex] : "vreg"); break;
-		case MachineOperandType::constant: output << "constant"; break;
-		case MachineOperandType::frameOffset: output << "frame+" << operand.frameOffset; break;
-		case MachineOperandType::spillOffset: output << "spill+" << operand.spillOffset; break;
-		case MachineOperandType::stackOffset: output << "rsp+" << operand.stackOffset; break;
-		case MachineOperandType::imm: output << "imm"; break;
+		case MachineOperandType::constant: output << "constants[" << operand.constantIndex << "]"; break;
+		case MachineOperandType::frameOffset: output << "frame" << (operand.frameOffset >= 0 ? "+" : "") << operand.frameOffset; break;
+		case MachineOperandType::spillOffset: output << "spill" << (operand.spillOffset >= 0 ? "+" : "") << operand.spillOffset; break;
+		case MachineOperandType::stackOffset: output << "rsp" << (operand.stackOffset >= 0 ? "+" : "") << operand.stackOffset; break;
+		case MachineOperandType::imm: output << operand.immvalue; break;
 		case MachineOperandType::basicblock: output << "basicblock"; break;
 		case MachineOperandType::func: output << "func"; break;
 		case MachineOperandType::global: output << "global"; break;
