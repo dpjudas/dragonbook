@@ -1,5 +1,5 @@
 
-IRCompiler
+libdragonbook
 Copyright (c) 2020 Magnus Norddahl
 
 This software is provided 'as-is', without any express or implied
