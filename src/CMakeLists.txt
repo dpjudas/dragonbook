@@ -50,19 +50,19 @@ else()
 	set(CMAKE_CXX_FLAGS "-std=gnu++14 ${CMAKE_CXX_FLAGS}")
 endif()
 
-add_library(IRCompiler STATIC ${LIB_SOURCES} ${NOT_COMPILED_SOURCES})
+add_library(dragonbook STATIC ${LIB_SOURCES} ${NOT_COMPILED_SOURCES})
 
-target_link_libraries(IRCompiler ${LIB_LIBS})
+target_link_libraries(dragonbook ${LIB_LIBS})
 
-target_compile_definitions(IRCompiler PUBLIC "$<$<CONFIG:RELEASE>:RELEASE>")
-target_compile_definitions(IRCompiler PUBLIC "$<$<CONFIG:MINSIZEREL>:RELEASE>")
-target_compile_definitions(IRCompiler PUBLIC "$<$<CONFIG:RELWITHDEBINFO>:RELEASE>")
+target_compile_definitions(dragonbook PUBLIC "$<$<CONFIG:RELEASE>:RELEASE>")
+target_compile_definitions(dragonbook PUBLIC "$<$<CONFIG:MINSIZEREL>:RELEASE>")
+target_compile_definitions(dragonbook PUBLIC "$<$<CONFIG:RELWITHDEBINFO>:RELEASE>")
 
-target_compile_definitions(IRCompiler PUBLIC "$<$<CONFIG:RELEASE>:NDEBUG>")
-target_compile_definitions(IRCompiler PUBLIC "$<$<CONFIG:MINSIZEREL>:NDEBUG>")
-target_compile_definitions(IRCompiler PUBLIC "$<$<CONFIG:RELWITHDEBINFO>:NDEBUG>")
+target_compile_definitions(dragonbook PUBLIC "$<$<CONFIG:RELEASE>:NDEBUG>")
+target_compile_definitions(dragonbook PUBLIC "$<$<CONFIG:MINSIZEREL>:NDEBUG>")
+target_compile_definitions(dragonbook PUBLIC "$<$<CONFIG:RELWITHDEBINFO>:NDEBUG>")
 
-target_compile_definitions(IRCompiler PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
+target_compile_definitions(dragonbook PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
 
 set_source_files_properties(${NOT_COMPILED_SOURCES} PROPERTIES HEADER_FILE_ONLY TRUE)
 

@@ -5,7 +5,7 @@ set(TEST_SOURCES
 )
 
 set(TEST_LIBS
-	IRCompiler
+	dragonbook
 )
 
 include_directories(. ../src)
@@ -21,16 +21,6 @@ if (MSVC)
 	set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}") # Use all cores for compilation
 endif()
 
-add_executable(IRTest ${TEST_SOURCES})
+add_executable(test ${TEST_SOURCES})
 
-target_link_libraries(IRTest ${TEST_LIBS})
-
-target_compile_definitions(IRTest PUBLIC "$<$<CONFIG:RELEASE>:RELEASE>")
-target_compile_definitions(IRTest PUBLIC "$<$<CONFIG:MINSIZEREL>:RELEASE>")
-target_compile_definitions(IRTest PUBLIC "$<$<CONFIG:RELWITHDEBINFO>:RELEASE>")
-
-target_compile_definitions(IRTest PUBLIC "$<$<CONFIG:RELEASE>:NDEBUG>")
-target_compile_definitions(IRTest PUBLIC "$<$<CONFIG:MINSIZEREL>:NDEBUG>")
-target_compile_definitions(IRTest PUBLIC "$<$<CONFIG:RELWITHDEBINFO>:NDEBUG>")
-
-target_compile_definitions(IRTest PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
+target_link_libraries(test ${TEST_LIBS})
