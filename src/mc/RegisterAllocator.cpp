@@ -482,16 +482,22 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 
 void RegisterAllocator::setAsMostRecentlyUsed(int pregIndex)
 {
-	RARegisterClass& cls = regclass[(int)reginfo[pregIndex].cls];
-	cls.mru.erase(cls.mruIt[pregIndex]);
-	cls.mruIt[pregIndex] = cls.mru.insert(cls.mru.end(), pregIndex);
+	if (reginfo[pregIndex].cls != MachineRegClass::reserved)
+	{
+		RARegisterClass& cls = regclass[(int)reginfo[pregIndex].cls];
+		cls.mru.erase(cls.mruIt[pregIndex]);
+		cls.mruIt[pregIndex] = cls.mru.insert(cls.mru.end(), pregIndex);
+	}
 }
 
 void RegisterAllocator::setAsLeastRecentlyUsed(int pregIndex)
 {
-	RARegisterClass& cls = regclass[(int)reginfo[pregIndex].cls];
-	cls.mru.erase(cls.mruIt[pregIndex]);
-	cls.mruIt[pregIndex] = cls.mru.insert(cls.mru.begin(), pregIndex);
+	if (reginfo[pregIndex].cls != MachineRegClass::reserved)
+	{
+		RARegisterClass& cls = regclass[(int)reginfo[pregIndex].cls];
+		cls.mru.erase(cls.mruIt[pregIndex]);
+		cls.mruIt[pregIndex] = cls.mru.insert(cls.mru.begin(), pregIndex);
+	}
 }
 
 int RegisterAllocator::getLeastRecentlyUsed(MachineRegClass cls)
