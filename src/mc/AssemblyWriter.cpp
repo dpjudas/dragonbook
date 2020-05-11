@@ -177,7 +177,7 @@ void AssemblyWriter::writeInst(const char* name, MachineInst* inst)
 		case MachineOperandType::stackOffset: output << "rsp" << (operand.stackOffset >= 0 ? "+" : "") << operand.stackOffset; break;
 		case MachineOperandType::imm: output << operand.immvalue; break;
 		case MachineOperandType::basicblock: output << "basicblock"; break;
-		case MachineOperandType::func: output << "func"; break;
+		case MachineOperandType::func: output << operand.func->name.c_str(); break;
 		case MachineOperandType::global: output << "global"; break;
 		}
 	}
