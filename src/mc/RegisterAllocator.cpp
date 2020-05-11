@@ -101,6 +101,10 @@ void RegisterAllocator::run()
 	for (RegisterName reg : volatileRegs)
 		usedRegs.erase(reg);
 
+	usedRegs.erase(RegisterName::rsp);
+	if (func->dynamicStackAllocations)
+		usedRegs.insert(RegisterName::rbp);
+
 	std::vector<RegisterName> savedRegs, savedXmmRegs;
 	for (RegisterName reg : usedRegs)
 	{
