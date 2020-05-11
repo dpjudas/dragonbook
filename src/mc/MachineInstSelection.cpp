@@ -642,7 +642,16 @@ void MachineInstSelection::inst(IRInstBitCast* node)
 {
 	if (isConstant(node->value))
 	{
-		throw std::runtime_error("BitCast on constant not allowed");
+		static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
+
+		int dataSizeType = getDataSizeType(node->value->type);
+		auto dst = newReg(node);
+
+		auto inst = context->newMachineInst();
+		inst->opcode = movOps[dataSizeType];
+		inst->operands.push_back(dst);
+		pushValueOperand(inst, node->value, dataSizeType);
+		bb->code.push_back(inst);
 	}
 	else
 	{
