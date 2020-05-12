@@ -22,7 +22,6 @@ struct RARegisterInfo
 	int vreg = -1;
 	int physreg = -1;
 	MachineOperand stacklocation = nullStackLocation();
-	bool spilled = true;
 
 	std::unique_ptr<RARegisterLiveReference> liveReferences;
 };
@@ -53,9 +52,7 @@ private:
 
 	void createRegisterInfo();
 
-	void usePhysRegister(MachineOperand& operand);
-
-	void useVirtRegister(MachineOperand& operand);
+	void useRegister(MachineOperand& operand);
 	void killVirtRegister(int vregIndex);
 
 	void assignAllToStack();

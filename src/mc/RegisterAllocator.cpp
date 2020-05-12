@@ -23,31 +23,11 @@ void RegisterAllocator::run()
 		MachineBasicBlock* bb = func->basicBlocks[i];
 		for (MachineInst* inst : bb->code)
 		{
-			if (inst->opcode == MachineInstOpcode::call)
-			{
-				for (RegisterName regName : volatileRegs)
-				{
-					int pregIndex = (int)regName;
-					if (reginfo[pregIndex].vreg != -1)
-					{
-						assignVirt2StackSlot(reginfo[pregIndex].vreg);
-						setAsLeastRecentlyUsed(pregIndex);
-					}
-				}
-			}
-
 			for (MachineOperand& operand : inst->operands)
 			{
 				if (operand.type == MachineOperandType::reg)
 				{
-					if (operand.registerIndex < (int)RegisterName::vregstart)
-					{
-						usePhysRegister(operand);
-					}
-					else
-					{
-						useVirtRegister(operand);
-					}
+					useRegister(operand);
 				}
 			}
 
@@ -74,9 +54,22 @@ void RegisterAllocator::run()
 				usedRegs.insert(RegisterName::rax);
 				usedRegs.insert(RegisterName::rdx);
 			}
-			else if (!inst->operands.empty() && inst->operands.front().type == MachineOperandType::reg)
+
+			if (inst->opcode == MachineInstOpcode::call)
 			{
-				usedRegs.insert((RegisterName)inst->operands.front().registerIndex);
+				for (RegisterName regName : volatileRegs)
+				{
+					int pregIndex = (int)regName;
+					if (reginfo[pregIndex].vreg != -1)
+					{
+						assignVirt2StackSlot(reginfo[pregIndex].vreg);
+						setAsLeastRecentlyUsed(pregIndex);
+					}
+				}
+
+				// To avoid mov rax,rax or mov xmm0,xmm0
+				setAsMostRecentlyUsed((int)RegisterName::rax);
+				setAsMostRecentlyUsed((int)RegisterName::xmm0);
 			}
 
 			if (inst->opcode == MachineInstOpcode::jz || inst->opcode == MachineInstOpcode::jmp)
@@ -316,7 +309,7 @@ void RegisterAllocator::setAllToStack()
 {
 	for (RARegisterInfo &entry : reginfo)
 	{
-		entry.spilled = true;
+		entry.physreg = -1;
 	}
 }
 
@@ -329,52 +322,48 @@ void RegisterAllocator::assignAllToStack()
 	}
 }
 
-void RegisterAllocator::usePhysRegister(MachineOperand& operand)
+void RegisterAllocator::useRegister(MachineOperand& operand)
 {
-	int pregIndex = operand.registerIndex;
-	auto& physreg = reginfo[pregIndex];
-
-	if (physreg.vreg != -1)
+	if (operand.registerIndex < (int)RegisterName::vregstart)
 	{
-		assignVirt2StackSlot(physreg.vreg);
-	}
-
-	setAsMostRecentlyUsed(pregIndex);
-}
-
-void RegisterAllocator::useVirtRegister(MachineOperand& operand)
-{
-	int vregIndex = operand.registerIndex;
-	auto& vreg = reginfo[vregIndex];
-	if (vreg.spilled)
-	{
-		int pregIndex = getLeastRecentlyUsed(vreg.cls);
+		int pregIndex = operand.registerIndex;
 
 		auto& physreg = reginfo[pregIndex];
 		if (physreg.vreg != -1)
+		{
 			assignVirt2StackSlot(physreg.vreg);
+		}
 
-		assignVirt2Phys(vregIndex, pregIndex);
+		setAsMostRecentlyUsed(pregIndex);
 	}
+	else
+	{
+		int vregIndex = operand.registerIndex;
+		auto& vreg = reginfo[vregIndex];
+		if (vreg.physreg == -1)
+		{
+			int pregIndex = getLeastRecentlyUsed(vreg.cls);
+			assignVirt2Phys(vregIndex, pregIndex);
+		}
 
-	setAsMostRecentlyUsed(vreg.physreg);
-	operand.registerIndex = vreg.physreg;
+		setAsMostRecentlyUsed(vreg.physreg);
+		operand.registerIndex = vreg.physreg;
+	}
 }
 
 void RegisterAllocator::killVirtRegister(int vregIndex)
 {
 	auto& vreg = reginfo[vregIndex];
-	if (!vreg.spilled)
+	if (vreg.physreg != -1)
 	{
 		int pregIndex = vreg.physreg;
 		auto& physreg = reginfo[pregIndex];
+
 		physreg.vreg = -1;
+		vreg.physreg = -1;
 
 		setAsLeastRecentlyUsed(pregIndex);
 	}
-
-	vreg.spilled = true;
-	vreg.physreg = -1;
 
 	if (vreg.stacklocation.type == MachineOperandType::spillOffset && vreg.stacklocation.spillOffset != -1)
 		freeStackOffsets.push_back(vreg.stacklocation.stackOffset);
@@ -385,20 +374,19 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 	auto& vreg = reginfo[vregIndex];
 	auto& physreg = reginfo[pregIndex];
 
-	if (physreg.vreg != -1 && physreg.vreg != vregIndex)
-	{
-		assignVirt2StackSlot(vregIndex);
-	}
+	if (physreg.vreg == vregIndex) // Already assigned to physreg
+		return;
 
-	if (vreg.spilled && vreg.stacklocation.spillOffset == -1)
+	if (physreg.vreg != -1) // Already in use. Make it available.
+		assignVirt2StackSlot(physreg.vreg);
+
+	if (vreg.physreg == -1 && vreg.stacklocation.spillOffset == -1) // first time vreg is used
 	{
 		vreg.physreg = pregIndex;
-		vreg.spilled = false;
+		physreg.vreg = vregIndex;
 	}
-	else if (vreg.spilled)
+	else if (vreg.physreg == -1) // move from stack
 	{
-		// emit move from stack:
-
 		MachineOperand dest;
 		dest.type = MachineOperandType::reg;
 		dest.registerIndex = pregIndex;
@@ -415,12 +403,9 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 
 		physreg.vreg = vregIndex;
 		vreg.physreg = pregIndex;
-		vreg.spilled = false;
 	}
-	else if (vreg.physreg != pregIndex)
+	else // move from other register
 	{
-		// emit move from other register:
-
 		MachineOperand dest;
 		dest.type = MachineOperandType::reg;
 		dest.registerIndex = pregIndex;
@@ -446,7 +431,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 {
 	auto& vreg = reginfo[vregIndex];
-	if (vreg.spilled)
+	if (vreg.physreg == -1)
 		return;
 
 	auto& physreg = reginfo[vreg.physreg];
@@ -481,7 +466,7 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 	emittedInstructions.push_back(inst);
 
 	physreg.vreg = -1;
-	vreg.spilled = true;
+	vreg.physreg = -1;
 }
 
 void RegisterAllocator::setAsMostRecentlyUsed(int pregIndex)
@@ -575,7 +560,6 @@ void RegisterAllocator::setupArgsWin64()
 			else
 				pregIndex = (int)RegisterName::xmm0 + (int)i;
 
-			reginfo[vregindex].spilled = false;
 			reginfo[vregindex].physreg = pregIndex;
 			reginfo[pregIndex].vreg = vregindex;
 
@@ -612,7 +596,6 @@ void RegisterAllocator::setupArgsUnix64()
 			if (nextRegisterArg < numRegisterArgs)
 			{
 				int pregIndex = (int)registerArgs[nextRegisterArg++];
-				reginfo[vregindex].spilled = false;
 				reginfo[vregindex].physreg = pregIndex;
 				reginfo[pregIndex].vreg = vregindex;
 				setAsMostRecentlyUsed(pregIndex);
@@ -628,7 +611,6 @@ void RegisterAllocator::setupArgsUnix64()
 			if (nextXmmRegisterArg < numXmmRegisterArgs)
 			{
 				int pregIndex = (int)RegisterName::xmm0 + (int)(nextXmmRegisterArg++);
-				reginfo[vregindex].spilled = false;
 				reginfo[vregindex].physreg = pregIndex;
 				reginfo[pregIndex].vreg = vregindex;
 				setAsMostRecentlyUsed(pregIndex);
