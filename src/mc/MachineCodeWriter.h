@@ -165,20 +165,20 @@ private:
 	void emitInstZO(int flags, int opcode);
 	void emitInstO(int flags, int opcode, MachineInst* inst);
 	void emitInstOI(int flags, int opcode, int immsize, MachineInst* inst);
-	void emitInstMI(int flags, int opcode, int immsize, MachineInst* inst);
-	void emitInstMI(int flags, int opcode, int modopcode, int immsize, MachineInst* inst);
-	void emitInstMR(int flags, int opcode, MachineInst* inst);
-	void emitInstM(int flags, int opcode, MachineInst* inst);
-	void emitInstM(int flags, int opcode, int modopcode, MachineInst* inst);
-	void emitInstM(int flags, std::initializer_list<int> opcode, MachineInst* inst);
-	void emitInstM(int flags, std::initializer_list<int> opcode, int modopcode, MachineInst* inst);
-	void emitInstMC(int flags, int opcode, MachineInst* inst);
-	void emitInstMC(int flags, int opcode, int modopcode, MachineInst* inst);
-	void emitInstRM(int flags, int opcode, MachineInst* inst);
-	void emitInstRM(int flags, std::initializer_list<int> opcode, MachineInst* inst);
-	void emitInstRMI(int flags, int opcode, int immsize, MachineInst* inst);
-	void emitInstSSE_RM(int flags, std::initializer_list<int> opcode, MachineInst* inst);
-	void emitInstSSE_MR(int flags, std::initializer_list<int> opcode, MachineInst* inst);
+	void emitInstMI(int flags, int opcode, int immsize, MachineInst* inst, bool memptr = false);
+	void emitInstMI(int flags, int opcode, int modopcode, int immsize, MachineInst* inst, bool memptr = false);
+	void emitInstMR(int flags, int opcode, MachineInst* inst, bool memptr = false);
+	void emitInstM(int flags, int opcode, MachineInst* inst, bool memptr = false);
+	void emitInstM(int flags, int opcode, int modopcode, MachineInst* inst, bool memptr = false);
+	void emitInstM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr = false);
+	void emitInstM(int flags, std::initializer_list<int> opcode, int modopcode, MachineInst* inst, bool memptr = false);
+	void emitInstMC(int flags, int opcode, MachineInst* inst, bool memptr = false);
+	void emitInstMC(int flags, int opcode, int modopcode, MachineInst* inst, bool memptr = false);
+	void emitInstRM(int flags, int opcode, MachineInst* inst, bool memptr = false);
+	void emitInstRM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr = false);
+	void emitInstRMI(int flags, int opcode, int immsize, MachineInst* inst, bool memptr = false);
+	void emitInstSSE_RM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr = false);
+	void emitInstSSE_MR(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr = false);
 
 	struct X64Instruction
 	{
@@ -202,7 +202,7 @@ private:
 		int immsize = 0;
 	};
 
-	void setM(X64Instruction& x64inst, const MachineOperand& operand);
+	void setM(X64Instruction& x64inst, const MachineOperand& operand, bool memptr);
 	void setI(X64Instruction& x64inst, int immsize, const MachineOperand& operand);
 	void setR(X64Instruction& x64inst, const MachineOperand& operand);
 	void setR(X64Instruction& x64inst, int modopcode);

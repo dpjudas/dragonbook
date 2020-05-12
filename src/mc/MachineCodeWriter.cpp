@@ -192,74 +192,74 @@ void MachineCodeWriter::lea(MachineInst* inst)
 
 void MachineCodeWriter::loadss(MachineInst* inst)
 {
-	emitInstSSE_RM(0, { 0xf3, 0x0f, 0x10 }, inst);
+	emitInstSSE_RM(0, { 0xf3, 0x0f, 0x10 }, inst, true);
 }
 
 void MachineCodeWriter::loadsd(MachineInst* inst)
 {
-	emitInstSSE_RM(0, { 0xf2, 0x0f, 0x10 }, inst);
+	emitInstSSE_RM(0, { 0xf2, 0x0f, 0x10 }, inst, true);
 }
 
 void MachineCodeWriter::load64(MachineInst* inst)
 {
-	emitInstRM(OpFlags::RexW, 0x8b, inst);
+	emitInstRM(OpFlags::RexW, 0x8b, inst, true);
 }
 
 void MachineCodeWriter::load32(MachineInst* inst)
 {
-	emitInstRM(0, 0x8b, inst);
+	emitInstRM(0, 0x8b, inst, true);
 }
 
 void MachineCodeWriter::load16(MachineInst* inst)
 {
-	emitInstRM(OpFlags::SizeOverride, 0x8b, inst);
+	emitInstRM(OpFlags::SizeOverride, 0x8b, inst, true);
 }
 
 void MachineCodeWriter::load8(MachineInst* inst)
 {
-	emitInstRM(OpFlags::Rex, 0x8a, inst);
+	emitInstRM(OpFlags::Rex, 0x8a, inst, true);
 }
 
 void MachineCodeWriter::storess(MachineInst* inst)
 {
-	emitInstSSE_MR(0, { 0xf3, 0x0f, 0x11 }, inst);
+	emitInstSSE_MR(0, { 0xf3, 0x0f, 0x11 }, inst, true);
 }
 
 void MachineCodeWriter::storesd(MachineInst* inst)
 {
-	emitInstSSE_MR(0, { 0xf2, 0x0f, 0x11 }, inst);
+	emitInstSSE_MR(0, { 0xf2, 0x0f, 0x11 }, inst, true);
 }
 
 void MachineCodeWriter::store64(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
-		emitInstMI(OpFlags::RexW, 0xb8, 64, inst);
+		emitInstMI(OpFlags::RexW, 0xb8, 64, inst, true);
 	else
-		emitInstMR(OpFlags::RexW, 0x89, inst);
+		emitInstMR(OpFlags::RexW, 0x89, inst, true);
 }
 
 void MachineCodeWriter::store32(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
-		emitInstMI(0, 0xb8, 32, inst);
+		emitInstMI(0, 0xb8, 32, inst, true);
 	else
-		emitInstMR(0, 0x89, inst);
+		emitInstMR(0, 0x89, inst, true);
 }
 
 void MachineCodeWriter::store16(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
-		emitInstMI(OpFlags::SizeOverride, 0xb8, 16, inst);
+		emitInstMI(OpFlags::SizeOverride, 0xb8, 16, inst, true);
 	else
-		emitInstMR(OpFlags::SizeOverride, 0x89, inst);
+		emitInstMR(OpFlags::SizeOverride, 0x89, inst, true);
 }
 
 void MachineCodeWriter::store8(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
-		emitInstMI(OpFlags::Rex, 0xc6, 8, inst);
+		emitInstMI(OpFlags::Rex, 0xc6, 8, inst, true);
 	else
-		emitInstMR(OpFlags::Rex, 0x88, inst);
+		emitInstMR(OpFlags::Rex, 0x88, inst, true);
 }
 
 void MachineCodeWriter::movss(MachineInst* inst)
@@ -976,93 +976,93 @@ void MachineCodeWriter::emitInstOI(int flags, int opcode, int immsize, MachineIn
 	writeImm(immsize, inst->operands[1].immvalue);
 }
 
-void MachineCodeWriter::emitInstMI(int flags, int opcode, int immsize, MachineInst* inst)
+void MachineCodeWriter::emitInstMI(int flags, int opcode, int immsize, MachineInst* inst, bool memptr)
 {
-	emitInstMI(flags, opcode, 0, immsize, inst);
+	emitInstMI(flags, opcode, 0, immsize, inst, memptr);
 }
 
-void MachineCodeWriter::emitInstMI(int flags, int opcode, int modopcode, int immsize, MachineInst* inst)
+void MachineCodeWriter::emitInstMI(int flags, int opcode, int modopcode, int immsize, MachineInst* inst, bool memptr)
 {
 	X64Instruction x64inst;
 	setR(x64inst, modopcode);
-	setM(x64inst, inst->operands[0]);
+	setM(x64inst, inst->operands[0], memptr);
 	setI(x64inst, immsize, inst->operands[1]);
 	writeInst(flags, { opcode }, x64inst);
 }
 
-void MachineCodeWriter::emitInstMR(int flags, int opcode, MachineInst* inst)
+void MachineCodeWriter::emitInstMR(int flags, int opcode, MachineInst* inst, bool memptr)
 {
 	X64Instruction x64inst;
-	setM(x64inst, inst->operands[0]);
+	setM(x64inst, inst->operands[0], memptr);
 	setR(x64inst, inst->operands[1]);
 	writeInst(flags, { opcode }, x64inst);
 }
 
-void MachineCodeWriter::emitInstM(int flags, int opcode, MachineInst* inst)
+void MachineCodeWriter::emitInstM(int flags, int opcode, MachineInst* inst, bool memptr)
 {
-	emitInstM(flags, { opcode }, 0, inst);
+	emitInstM(flags, { opcode }, 0, inst, memptr);
 }
 
-void MachineCodeWriter::emitInstM(int flags, int opcode, int modopcode, MachineInst* inst)
+void MachineCodeWriter::emitInstM(int flags, int opcode, int modopcode, MachineInst* inst, bool memptr)
 {
-	emitInstM(flags, { opcode }, modopcode, inst);
+	emitInstM(flags, { opcode }, modopcode, inst, memptr);
 }
 
-void MachineCodeWriter::emitInstM(int flags, std::initializer_list<int> opcode, MachineInst* inst)
+void MachineCodeWriter::emitInstM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr)
 {
-	emitInstM(flags, opcode, 0, inst);
+	emitInstM(flags, opcode, 0, inst, memptr);
 }
 
-void MachineCodeWriter::emitInstM(int flags, std::initializer_list<int> opcode, int modopcode, MachineInst* inst)
+void MachineCodeWriter::emitInstM(int flags, std::initializer_list<int> opcode, int modopcode, MachineInst* inst, bool memptr)
 {
 	X64Instruction x64inst;
 	setR(x64inst, modopcode);
-	setM(x64inst, inst->operands[0]);
+	setM(x64inst, inst->operands[0], memptr);
 	writeInst(flags, opcode, x64inst);
 }
 
-void MachineCodeWriter::emitInstMC(int flags, int opcode, MachineInst* inst)
+void MachineCodeWriter::emitInstMC(int flags, int opcode, MachineInst* inst, bool memptr)
 {
-	emitInstMC(flags, opcode, 0, inst);
+	emitInstMC(flags, opcode, 0, inst, memptr);
 }
 
-void MachineCodeWriter::emitInstMC(int flags, int opcode, int modopcode, MachineInst* inst)
+void MachineCodeWriter::emitInstMC(int flags, int opcode, int modopcode, MachineInst* inst, bool memptr)
 {
 	// register in inst->operands[1] must be CL
 
 	X64Instruction x64inst;
 	setR(x64inst, modopcode);
-	setM(x64inst, inst->operands[0]);
+	setM(x64inst, inst->operands[0], memptr);
 	writeInst(flags, { opcode }, x64inst);
 }
 
-void MachineCodeWriter::emitInstRM(int flags, int opcode, MachineInst* inst)
+void MachineCodeWriter::emitInstRM(int flags, int opcode, MachineInst* inst, bool memptr)
 {
-	emitInstRM(flags, { opcode }, inst);
+	emitInstRM(flags, { opcode }, inst, memptr);
 }
 
-void MachineCodeWriter::emitInstRM(int flags, std::initializer_list<int> opcode, MachineInst* inst)
+void MachineCodeWriter::emitInstRM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr)
 {
 	X64Instruction x64inst;
 	setR(x64inst, inst->operands[0]);
-	setM(x64inst, inst->operands[1]);
+	setM(x64inst, inst->operands[1], memptr);
 	writeInst(flags, opcode, x64inst);
 }
 
-void MachineCodeWriter::emitInstRMI(int flags, int opcode, int immsize, MachineInst* inst)
+void MachineCodeWriter::emitInstRMI(int flags, int opcode, int immsize, MachineInst* inst, bool memptr)
 {
 	X64Instruction x64inst;
 	setR(x64inst, inst->operands[0]);
-	setM(x64inst, inst->operands[0]);
+	setM(x64inst, inst->operands[0], memptr);
 	setI(x64inst, immsize, inst->operands[1]);
 	writeInst(flags, { opcode }, x64inst);
 }
 
-void MachineCodeWriter::emitInstSSE_RM(int flags, std::initializer_list<int> opcode, MachineInst* inst)
+void MachineCodeWriter::emitInstSSE_RM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr)
 {
 	X64Instruction x64inst;
 	setR(x64inst, inst->operands[0]);
-	setM(x64inst, inst->operands[1]);
+	setM(x64inst, inst->operands[1], memptr);
 	writeInst(flags, { opcode }, x64inst);
 
 	if (inst->operands[1].type == MachineOperandType::constant)
@@ -1075,10 +1075,10 @@ void MachineCodeWriter::emitInstSSE_RM(int flags, std::initializer_list<int> opc
 	}
 }
 
-void MachineCodeWriter::emitInstSSE_MR(int flags, std::initializer_list<int> opcode, MachineInst* inst)
+void MachineCodeWriter::emitInstSSE_MR(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr)
 {
 	X64Instruction x64inst;
-	setM(x64inst, inst->operands[0]);
+	setM(x64inst, inst->operands[0], memptr);
 	setR(x64inst, inst->operands[1]);
 	writeInst(flags, { opcode }, x64inst);
 }
@@ -1091,12 +1091,12 @@ int MachineCodeWriter::getPhysReg(const MachineOperand& operand)
 		return operand.registerIndex - (int)RegisterName::xmm0;
 }
 
-void MachineCodeWriter::setM(X64Instruction& x64inst, const MachineOperand& operand)
+void MachineCodeWriter::setM(X64Instruction& x64inst, const MachineOperand& operand, bool memptr)
 {
 	if (operand.type == MachineOperandType::reg)
 	{
 		x64inst.rm = getPhysReg(operand);
-		x64inst.mod = 3;
+		x64inst.mod = memptr ? 0 : 3;
 	}
 	else if (operand.type == MachineOperandType::frameOffset)
 	{
