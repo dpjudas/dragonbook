@@ -806,28 +806,30 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 	}
 
 	MachineOperand dst = newReg(node);
+	MachineOperand src = newPhysReg(RegisterName::rsp);
 
-	// mov vreg,rsp
+	if (mfunc->maxCallArgsSize == 0)
 	{
-		MachineOperand src = newPhysReg(RegisterName::rsp);
-
+		// mov vreg,rsp
 		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::mov64;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
 		bb->code.push_back(inst);
 	}
-
-	// add vreg,maxCallArgsSize
+	else
 	{
-		MachineOperand src = newImm(mfunc->maxCallArgsSize); // To do: maxCallArgsSize must be calculated first for the entire function
+		// lea vreg,ptr[rsp+maxCallArgsSize]
+		MachineOperand offsetoperand = newImm(mfunc->maxCallArgsSize); // To do: maxCallArgsSize must be calculated first for the entire function
 
 		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::add64;
+		inst->opcode = MachineInstOpcode::lea;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
+		inst->operands.push_back(offsetoperand);
 		bb->code.push_back(inst);
 	}
+
 
 	mfunc->dynamicStackAllocations = true;
 	mfunc->registers[(int)RegisterName::rbp].cls = MachineRegClass::reserved;
