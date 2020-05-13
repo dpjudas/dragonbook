@@ -22,6 +22,7 @@ struct RARegisterInfo
 	int vreg = -1;
 	int physreg = -1;
 	MachineOperand stacklocation = nullStackLocation();
+	bool modified = false;
 
 	std::unique_ptr<RARegisterLiveReference> liveReferences;
 };
@@ -67,6 +68,8 @@ private:
 
 	void runLiveAnalysis();
 	void addLiveReference(size_t vregIndex, MachineBasicBlock* bb);
+
+	void updateModifiedStatus(MachineInst* inst);
 
 	std::vector<RegisterName> volatileRegs;
 	std::set<RegisterName> usedRegs;

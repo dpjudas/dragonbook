@@ -31,22 +31,36 @@ void RegisterAllocator::run()
 				}
 			}
 
+			//std::string comment;
 			for (MachineOperand& operand : inst->operands)
 			{
 				if (operand.type == MachineOperandType::reg)
 				{
-					// If vreg is only used by one BB we can safely kill it once we get to the last inst using it
-					auto& liveref = reginfo[operand.registerIndex].liveReferences;
-					if (liveref && liveref->bb == bb && !liveref->next)
+					int pregIndex = operand.registerIndex;
+					int vregIndex = reginfo[pregIndex].vreg;
+					if (vregIndex != -1)
 					{
-						liveref->refcount--;
-						if (liveref->refcount == 0)
+						// If vreg is only used by one BB we can safely kill it once we get to the last inst using it
+						auto& liveref = reginfo[vregIndex].liveReferences;
+						if (liveref && liveref->bb == bb && !liveref->next)
 						{
-							killVirtRegister(operand.registerIndex);
+							liveref->refcount--;
+							if (liveref->refcount == 0)
+							{
+								killVirtRegister(vregIndex);
+
+								/*if (comment.empty())
+									comment = "kill vreg ";
+								else
+									comment += ", ";
+								comment += std::to_string(vregIndex);*/
+							}
 						}
 					}
 				}
 			}
+			//if (!comment.empty())
+			//	inst->comment = comment;
 
 			if ((inst->opcode >= MachineInstOpcode::idiv64 && inst->opcode <= MachineInstOpcode::idiv8) ||
 				(inst->opcode >= MachineInstOpcode::div64 && inst->opcode <= MachineInstOpcode::div8))
@@ -54,6 +68,8 @@ void RegisterAllocator::run()
 				usedRegs.insert(RegisterName::rax);
 				usedRegs.insert(RegisterName::rdx);
 			}
+
+			updateModifiedStatus(inst);
 
 			if (inst->opcode == MachineInstOpcode::call)
 			{
@@ -124,6 +140,27 @@ void RegisterAllocator::run()
 
 	emitProlog(savedRegs, savedXmmRegs, frameStackAdjustment, func->dynamicStackAllocations);
 	emitEpilog(savedRegs, savedXmmRegs, frameStackAdjustment, func->dynamicStackAllocations);
+}
+
+void RegisterAllocator::updateModifiedStatus(MachineInst* inst)
+{
+	if (inst->operands.empty() || inst->operands[0].type != MachineOperandType::reg) return;
+
+	MachineInstOpcode opcode = inst->opcode;
+	if (opcode == MachineInstOpcode::nop ||
+		(opcode >= MachineInstOpcode::storess && opcode <= MachineInstOpcode::store8) ||
+		(opcode >= MachineInstOpcode::idiv64 && opcode <= MachineInstOpcode::idiv8) ||
+		(opcode >= MachineInstOpcode::div64 && opcode <= MachineInstOpcode::div8) ||
+		(opcode >= MachineInstOpcode::ucomisd && opcode <= MachineInstOpcode::cmp8) ||
+		(opcode >= MachineInstOpcode::jmp && opcode <= MachineInstOpcode::pop))
+	{
+		return;
+	}
+
+	int pregIndex = inst->operands[0].registerIndex;
+	int vregIndex = reginfo[pregIndex].vreg;
+	if (vregIndex != -1)
+		reginfo[vregIndex].modified = true;
 }
 
 void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackAdjustment, bool dsa)
@@ -436,34 +473,39 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 
 	auto& physreg = reginfo[vreg.physreg];
 
-	if (vreg.stacklocation.spillOffset == -1)
+	if (vreg.modified)
 	{
-		if (freeStackOffsets.empty())
+		if (vreg.stacklocation.spillOffset == -1)
 		{
-			vreg.stacklocation.spillOffset = nextStackOffset;
-			nextStackOffset += 8;
+			if (freeStackOffsets.empty())
+			{
+				vreg.stacklocation.spillOffset = nextStackOffset;
+				nextStackOffset += 8;
+			}
+			else
+			{
+				vreg.stacklocation.spillOffset = freeStackOffsets.back();
+				freeStackOffsets.pop_back();
+			}
 		}
-		else
-		{
-			vreg.stacklocation.spillOffset = freeStackOffsets.back();
-			freeStackOffsets.pop_back();
-		}
+
+		// emit move from register to stack:
+
+		MachineOperand dest = vreg.stacklocation;
+
+		MachineOperand src;
+		src.type = MachineOperandType::reg;
+		src.registerIndex = vreg.physreg;
+
+		auto inst = context->newMachineInst();
+		inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::store64 : MachineInstOpcode::storesd;
+		inst->operands.push_back(dest);
+		inst->operands.push_back(src);
+		inst->comment = "save vreg " + std::to_string(vregIndex);
+		emittedInstructions.push_back(inst);
+
+		vreg.modified = false;
 	}
-
-	// emit move from register to stack:
-
-	MachineOperand dest = vreg.stacklocation;
-
-	MachineOperand src;
-	src.type = MachineOperandType::reg;
-	src.registerIndex = vreg.physreg;
-
-	auto inst = context->newMachineInst();
-	inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::store64 : MachineInstOpcode::storesd;
-	inst->operands.push_back(dest);
-	inst->operands.push_back(src);
-	inst->comment = "save vreg " + std::to_string(vregIndex);
-	emittedInstructions.push_back(inst);
 
 	physreg.vreg = -1;
 	vreg.physreg = -1;
@@ -560,6 +602,7 @@ void RegisterAllocator::setupArgsWin64()
 			else
 				pregIndex = (int)RegisterName::xmm0 + (int)i;
 
+			reginfo[vregindex].modified = true;
 			reginfo[vregindex].physreg = pregIndex;
 			reginfo[pregIndex].vreg = vregindex;
 
