@@ -43,6 +43,8 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm15
 	selection.mfunc->registers.resize((size_t)RegisterName::vregstart);
 
+	selection.findMaxCallArgsSize();
+
 	for (IRValue* value : sfunc->args)
 	{
 		selection.newReg(value);
@@ -793,13 +795,13 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 	uint64_t size = node->type->getPointerElementType()->getTypeAllocSize() * getConstantValueInt(node->arraySize);
 	size = (size + 15) / 16 * 16;
 
-	// add rsp,size
+	// sub rsp,size
 	{
 		MachineOperand src = newImm(size);
 		MachineOperand dst = newPhysReg(RegisterName::rsp);
 
 		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::add64;
+		inst->opcode = MachineInstOpcode::sub64;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
 		bb->code.push_back(inst);
@@ -820,7 +822,7 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 	else
 	{
 		// lea vreg,ptr[rsp+maxCallArgsSize]
-		MachineOperand offsetoperand = newImm(mfunc->maxCallArgsSize); // To do: maxCallArgsSize must be calculated first for the entire function
+		MachineOperand offsetoperand = newImm(mfunc->maxCallArgsSize);
 
 		auto inst = context->newMachineInst();
 		inst->opcode = MachineInstOpcode::lea;
@@ -851,14 +853,30 @@ int MachineInstSelection::getDataSizeType(IRType* type)
 		return 2;
 }
 
+void MachineInstSelection::findMaxCallArgsSize()
+{
+	int callArgsSize = 4;
+	for (size_t i = 0; i < sfunc->basicBlocks.size(); i++)
+	{
+		IRBasicBlock* bb = sfunc->basicBlocks[i];
+		for (IRValue* value : bb->code)
+		{
+			IRInstCall* node = dynamic_cast<IRInstCall*>(value);
+			if (node)
+			{
+				callArgsSize = std::max(callArgsSize, (int)node->args.size());
+			}
+		}
+	}
+	mfunc->maxCallArgsSize = callArgsSize * 8;
+}
+
 void MachineInstSelection::callWin64(IRInstCall* node)
 {
 	static const MachineInstOpcode loadOps[] = { MachineInstOpcode::loadsd, MachineInstOpcode::loadss, MachineInstOpcode::load64, MachineInstOpcode::load32, MachineInstOpcode::load16, MachineInstOpcode::load8 };
 	static const MachineInstOpcode storeOps[] = { MachineInstOpcode::storesd, MachineInstOpcode::storess, MachineInstOpcode::store64, MachineInstOpcode::store32, MachineInstOpcode::store16, MachineInstOpcode::store8 };
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 	static const RegisterName regvars[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
-
-	int callArgsSize = 0;
 
 	// Move arguments into place
 	for (size_t i = 0; i < node->args.size(); i++)
@@ -918,11 +936,7 @@ void MachineInstSelection::callWin64(IRInstCall* node)
 				bb->code.push_back(inst);
 			}
 		}
-
-		callArgsSize += 8;
 	}
-
-	mfunc->maxCallArgsSize = std::max(mfunc->maxCallArgsSize, callArgsSize);
 
 	// Call the function
 	{
@@ -983,7 +997,6 @@ void MachineInstSelection::callUnix64(IRInstCall* node)
 	const int numXmmRegisterArgs = 8;
 	int nextRegisterArg = 0;
 	int nextXmmRegisterArg = 0;
-	int callArgsSize = 0;
 
 	// Move arguments into place
 	for (size_t i = 0; i < node->args.size(); i++)
@@ -1042,12 +1055,8 @@ void MachineInstSelection::callUnix64(IRInstCall* node)
 				pushValueOperand(inst, arg, dataSizeType);
 				bb->code.push_back(inst);
 			}
-
-			callArgsSize += 8;
 		}
 	}
-
-	mfunc->maxCallArgsSize = std::max(mfunc->maxCallArgsSize, callArgsSize);
 
 	// Call the function
 	{

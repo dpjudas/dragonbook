@@ -10,6 +10,8 @@ public:
 private:
 	MachineInstSelection(IRFunction* sfunc) : context(sfunc->context), sfunc(sfunc) { }
 
+	void findMaxCallArgsSize();
+
 	void inst(IRInstLoad* node) override;
 	void inst(IRInstStore* node) override;
 	void inst(IRInstAdd* node) override;

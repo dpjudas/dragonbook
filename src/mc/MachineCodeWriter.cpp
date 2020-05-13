@@ -162,32 +162,27 @@ void MachineCodeWriter::nop(MachineInst* inst)
 
 void MachineCodeWriter::lea(MachineInst* inst)
 {
-	// ModR/M:
-	int mod = 0;
-	int modreg = 0;
-	int rm = 0;
+	X64Instruction x64inst;
+	setR(x64inst, inst->operands[0]);
 
-	// SIB:
-	int scale = 0;
-	int index = 0;
-	int base = 0;
-	bool sib = false;
+	x64inst.disp = (int)inst->operands[2].immvalue;
+	x64inst.dispsize = (x64inst.disp > -127 && x64inst.disp < 127) ? 8 : 32;
+	if (inst->operands[1].registerIndex == (int)RegisterName::rsp)
+	{
+		x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
+		x64inst.rm = 4;
+		x64inst.scale = 0;
+		x64inst.index = 4;
+		x64inst.base = getPhysReg(inst->operands[1]);
+		x64inst.sib = true;
+	}
+	else
+	{
+		x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
+		x64inst.rm = getPhysReg(inst->operands[1]);
+	}
 
-	// Disp:
-	int32_t disp = 0;
-	int dispsize = 0;
-
-	modreg = getPhysReg(inst->operands[0]);
-
-	disp = (int32_t)inst->operands[2].immvalue;
-	dispsize = (disp > -127 && disp < 127) ? 8 : 32;
-	mod = (dispsize == 8) ? 1 : 2;
-	rm = getPhysReg(inst->operands[1]);
-
-	writeOpcode(OpFlags::RexW, { 0x8d }, modreg >> 3, index >> 3, rm >> 3);
-	writeModRM(mod, modreg, rm);
-	if (sib) writeSIB(scale, index, base);
-	if (dispsize > 0) writeImm(dispsize, disp);
+	writeInst(OpFlags::RexW, { 0x8d }, x64inst);
 }
 
 void MachineCodeWriter::loadss(MachineInst* inst)
@@ -1163,7 +1158,7 @@ void MachineCodeWriter::setR(X64Instruction& x64inst, int modopcode)
 
 void MachineCodeWriter::writeInst(int flags, std::initializer_list<int> opcode, const X64Instruction& x64inst)
 {
-	writeOpcode(flags, { opcode }, x64inst.modreg >> 3, x64inst.index >> 3, x64inst.rm >> 3);
+	writeOpcode(flags, { opcode }, x64inst.modreg >> 3, x64inst.index >> 3, (x64inst.rm | x64inst.base) >> 3);
 	writeModRM(x64inst.mod, x64inst.modreg, x64inst.rm);
 	if (x64inst.sib) writeSIB(x64inst.scale, x64inst.index, x64inst.base);
 	if (x64inst.dispsize > 0) writeImm(x64inst.dispsize, x64inst.disp);
@@ -1209,6 +1204,7 @@ void MachineCodeWriter::writeModRM(int mod, int modreg, int rm)
 void MachineCodeWriter::writeSIB(int scale, int index, int base)
 {
 	index &= 7;
+	base &= 7;
 	codeholder->code.push_back((scale << 6) | (index << 3) | base);
 }
 
