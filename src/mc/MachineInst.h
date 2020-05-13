@@ -33,7 +33,7 @@ enum class MachineInstOpcode
 	cvtsd2ss, cvtss2sd,
 	cvttsd2si, cvttss2si,
 	cvtsi2sd, cvtsi2ss,
-	jmp, jz,
+	jmp, je,
 	call, ret, push, pop
 };
 

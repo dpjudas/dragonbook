@@ -147,7 +147,7 @@ void MachineCodeWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::cvtsi2sd: cvtsi2sd(inst); break;
 	case MachineInstOpcode::cvtsi2ss: cvtsi2ss(inst); break;
 	case MachineInstOpcode::jmp: jmp(inst); break;
-	case MachineInstOpcode::jz: jz(inst); break;
+	case MachineInstOpcode::je: je(inst); break;
 	case MachineInstOpcode::call: call(inst); break;
 	case MachineInstOpcode::ret: ret(inst); break;
 	case MachineInstOpcode::push: push(inst); break;
@@ -167,7 +167,7 @@ void MachineCodeWriter::lea(MachineInst* inst)
 
 	x64inst.disp = (int)inst->operands[2].immvalue;
 	x64inst.dispsize = (x64inst.disp > -127 && x64inst.disp < 127) ? 8 : 32;
-	if (inst->operands[1].registerIndex == (int)RegisterName::rsp)
+	if (inst->operands[1].registerIndex == (int)RegisterName::rsp || inst->operands[1].registerIndex == (int)RegisterName::r12)
 	{
 		x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
 		x64inst.rm = 4;
@@ -228,7 +228,7 @@ void MachineCodeWriter::storesd(MachineInst* inst)
 void MachineCodeWriter::store64(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
-		emitInstMI(OpFlags::RexW, 0xb8, 64, inst, true);
+		emitInstMI(OpFlags::RexW, 0xc7, 32, inst, true);
 	else
 		emitInstMR(OpFlags::RexW, 0x89, inst, true);
 }
@@ -236,7 +236,7 @@ void MachineCodeWriter::store64(MachineInst* inst)
 void MachineCodeWriter::store32(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
-		emitInstMI(0, 0xb8, 32, inst, true);
+		emitInstMI(0, 0xc7, 32, inst, true);
 	else
 		emitInstMR(0, 0x89, inst, true);
 }
@@ -244,7 +244,7 @@ void MachineCodeWriter::store32(MachineInst* inst)
 void MachineCodeWriter::store16(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
-		emitInstMI(OpFlags::SizeOverride, 0xb8, 16, inst, true);
+		emitInstMI(OpFlags::SizeOverride, 0xc7, 16, inst, true);
 	else
 		emitInstMR(OpFlags::SizeOverride, 0x89, inst, true);
 }
@@ -907,7 +907,7 @@ void MachineCodeWriter::jmp(MachineInst* inst)
 	codeholder->bbRelocateInfo.push_back({ codeholder->code.size() - 4, inst->operands[0].bb });
 }
 
-void MachineCodeWriter::jz(MachineInst* inst)
+void MachineCodeWriter::je(MachineInst* inst)
 {
 	writeOpcode(0, { 0x0f, 0x84 }, 0, 0, 0);
 	writeImm(32, 0xffffffff);
@@ -1090,8 +1090,36 @@ void MachineCodeWriter::setM(X64Instruction& x64inst, const MachineOperand& oper
 {
 	if (operand.type == MachineOperandType::reg)
 	{
-		x64inst.rm = getPhysReg(operand);
-		x64inst.mod = memptr ? 0 : 3;
+		if (memptr)
+		{
+			if (operand.registerIndex == (int)RegisterName::rsp || operand.registerIndex == (int)RegisterName::r12)
+			{
+				x64inst.rm = (int)RegisterName::rsp;
+				x64inst.mod = 0;
+				x64inst.scale = 0;
+				x64inst.index = 4;
+				x64inst.base = getPhysReg(operand);
+				x64inst.sib = true;
+			}
+			else if (operand.registerIndex == (int)RegisterName::rbp || operand.registerIndex == (int)RegisterName::r13)
+			{
+				x64inst.rm = getPhysReg(operand);
+				x64inst.mod = 1;
+				x64inst.disp = 0;
+				x64inst.dispsize = 8;
+			}
+			else
+			{
+				x64inst.rm = getPhysReg(operand);
+				x64inst.mod = 0;
+			}
+		}
+		else
+		{
+			x64inst.rm = getPhysReg(operand);
+			x64inst.mod = 3;
+		}
+
 	}
 	else if (operand.type == MachineOperandType::frameOffset)
 	{

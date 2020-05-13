@@ -144,7 +144,7 @@ void AssemblyWriter::opcode(MachineInst* inst)
 	case MachineInstOpcode::cvtsi2sd: cvtsi2sd(inst); break;
 	case MachineInstOpcode::cvtsi2ss: cvtsi2ss(inst); break;
 	case MachineInstOpcode::jmp: jmp(inst); break;
-	case MachineInstOpcode::jz: jz(inst); break;
+	case MachineInstOpcode::je: je(inst); break;
 	case MachineInstOpcode::call: call(inst); break;
 	case MachineInstOpcode::ret: ret(inst); break;
 	case MachineInstOpcode::push: push(inst); break;
@@ -771,9 +771,9 @@ void AssemblyWriter::jmp(MachineInst* inst)
 	writeInst("jmp", inst);
 }
 
-void AssemblyWriter::jz(MachineInst* inst)
+void AssemblyWriter::je(MachineInst* inst)
 {
-	writeInst("jz", inst);
+	writeInst("je", inst);
 }
 
 void AssemblyWriter::call(MachineInst* inst)

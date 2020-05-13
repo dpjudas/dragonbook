@@ -72,7 +72,7 @@ void RegisterAllocator::run()
 				setAsMostRecentlyUsed((int)RegisterName::xmm0);
 			}
 
-			if (inst->opcode == MachineInstOpcode::jz || inst->opcode == MachineInstOpcode::jmp)
+			if (inst->opcode == MachineInstOpcode::je || inst->opcode == MachineInstOpcode::jmp)
 			{
 				if (inst->operands[0].bb == func->epilog)
 				{
