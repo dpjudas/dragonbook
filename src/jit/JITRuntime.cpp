@@ -189,24 +189,34 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 	int tableIndex = 0;
 	for (const auto& entry : codeholder->getFunctionTable())
 	{
-		table[tableIndex].BeginAddress = (DWORD)entry.beginAddress;
-		table[tableIndex].EndAddress = (DWORD)entry.endAddress;
+		if (!entry.external)
+		{
+			table[tableIndex].BeginAddress = (DWORD)entry.beginAddress;
+			table[tableIndex].EndAddress = (DWORD)entry.endAddress;
 #ifndef __MINGW64__
-		table[tableIndex].UnwindInfoAddress = (DWORD)(codeSize + dataSize + entry.beginUnwindData);
+			table[tableIndex].UnwindInfoAddress = (DWORD)(codeSize + dataSize + entry.beginUnwindData);
 #else
-		table[tableIndex].UnwindData = (DWORD)(codeSize + dataSize + entry.beginUnwindData);
+			table[tableIndex].UnwindData = (DWORD)(codeSize + dataSize + entry.beginUnwindData);
 #endif
-		tableIndex++;
+			tableIndex++;
+		}
 	}
 
-	BOOLEAN result = RtlAddFunctionTable(table, (DWORD)codeholder->getFunctionTable().size(), (DWORD64)baseaddr);
+	BOOLEAN result = RtlAddFunctionTable(table, (DWORD)tableIndex, (DWORD64)baseaddr);
 	frames.push_back((uint8_t*)table);
 	if (result == 0)
 		throw std::runtime_error("RtlAddFunctionTable failed");
 
 	for (const auto& entry : codeholder->getFunctionTable())
 	{
-		functionTable[entry.func] = baseaddr + entry.beginAddress;
+		if (!entry.external)
+		{
+			functionTable[entry.func] = baseaddr + entry.beginAddress;
+		}
+		else
+		{
+			functionTable[entry.func] = (void*)entry.external;
+		}
 	}
 #endif
 }
@@ -285,7 +295,14 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 
 	for (const auto& entry : codeholder->getFunctionTable())
 	{
-		functionTable[entry.func] = baseaddr + entry.beginAddress;
+		if (!entry.external)
+		{
+			functionTable[entry.func] = baseaddr + entry.beginAddress;
+		}
+		else
+		{
+			functionTable[entry.func] = (void*)entry.external;
+		}
 	}
 }
 
