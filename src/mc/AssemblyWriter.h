@@ -152,5 +152,10 @@ private:
 
 	void writeInst(const char* name, MachineInst* inst);
 
+	const char* getBasicBlockName(MachineBasicBlock* bb);
+
+	std::map<MachineBasicBlock*, std::string> bbNames;
+	int nextBBNameIndex = 0;
+
 	MachineFunction* sfunc;
 };

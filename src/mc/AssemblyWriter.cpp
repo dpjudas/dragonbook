@@ -16,7 +16,7 @@ void AssemblyWriter::codegen()
 
 void AssemblyWriter::basicblock(MachineBasicBlock* bb)
 {
-	output << "BB:" << std::endl;
+	output << getBasicBlockName(bb) << ":" << std::endl;
 	for (MachineInst* inst : bb->code)
 	{
 		opcode(inst);
@@ -176,7 +176,7 @@ void AssemblyWriter::writeInst(const char* name, MachineInst* inst)
 		case MachineOperandType::spillOffset: output << "spill" << (operand.spillOffset >= 0 ? "+" : "") << operand.spillOffset; break;
 		case MachineOperandType::stackOffset: output << "rsp" << (operand.stackOffset >= 0 ? "+" : "") << operand.stackOffset; break;
 		case MachineOperandType::imm: output << operand.immvalue; break;
-		case MachineOperandType::basicblock: output << "basicblock"; break;
+		case MachineOperandType::basicblock: output << getBasicBlockName(operand.bb); break;
 		case MachineOperandType::func: output << operand.func->name.c_str(); break;
 		case MachineOperandType::global: output << "global"; break;
 		}
@@ -189,6 +189,16 @@ void AssemblyWriter::writeInst(const char* name, MachineInst* inst)
 	}
 
 	output << std::endl;
+}
+
+const char* AssemblyWriter::getBasicBlockName(MachineBasicBlock* bb)
+{
+	auto& name = bbNames[bb];
+	if (name.empty())
+	{
+		name = "BB" + std::to_string(nextBBNameIndex++);
+	}
+	return name.c_str();
 }
 
 void AssemblyWriter::nop(MachineInst* inst)
