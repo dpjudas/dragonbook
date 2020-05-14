@@ -23,6 +23,7 @@ struct RARegisterInfo
 	int physreg = -1;
 	MachineOperand stacklocation = nullStackLocation();
 	bool modified = false;
+	bool stackvar = false;
 
 	std::unique_ptr<RARegisterLiveReference> liveReferences;
 };
@@ -41,6 +42,8 @@ public:
 private:
 	RegisterAllocator(IRContext* context, MachineFunction* func) : context(context), func(func) { }
 	void run();
+
+	void allocStackVars();
 
 	void setupArgsWin64();
 	void setupArgsUnix64();

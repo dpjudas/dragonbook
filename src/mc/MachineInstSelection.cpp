@@ -61,7 +61,13 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 	selection.bb = selection.bbMap[sfunc->basicBlocks[0]];
 	for (size_t i = 0; i < sfunc->stackVars.size(); i++)
 	{
-		selection.inst(sfunc->stackVars[i]);
+		IRInstAlloca* node = sfunc->stackVars[i];
+
+		uint64_t size = node->type->getPointerElementType()->getTypeAllocSize() * selection.getConstantValueInt(node->arraySize);
+		size = (size + 15) / 16 * 16;
+
+		MachineOperand dst = selection.newReg(node);
+		selection.mfunc->stackvars.push_back({ dst.registerIndex, size });
 	}
 
 	for (size_t i = 0; i < sfunc->basicBlocks.size(); i++)
@@ -77,14 +83,34 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 void MachineInstSelection::inst(IRInstLoad* node)
 {
 	static const MachineInstOpcode loadOps[] = { MachineInstOpcode::loadsd, MachineInstOpcode::loadss, MachineInstOpcode::load64, MachineInstOpcode::load32, MachineInstOpcode::load16, MachineInstOpcode::load8 };
+	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 
 	int dataSizeType = getDataSizeType(node->type);
 
-	auto inst = context->newMachineInst();
-	inst->opcode = loadOps[dataSizeType];
-	inst->operands.push_back(newReg(node));
-	pushValueOperand(inst, node->operand, dataSizeType);
-	bb->code.push_back(inst);
+	if (isConstantInt(node->operand))
+	{
+		auto srcreg = newTempReg(MachineRegClass::gp);
+
+		auto movinst = context->newMachineInst();
+		movinst->opcode = MachineInstOpcode::mov64;
+		movinst->operands.push_back(srcreg);
+		pushValueOperand(movinst, node->operand, 2);
+		bb->code.push_back(movinst);
+
+		auto loadinst = context->newMachineInst();
+		loadinst->opcode = loadOps[dataSizeType];
+		loadinst->operands.push_back(newReg(node));
+		loadinst->operands.push_back(srcreg);
+		bb->code.push_back(loadinst);
+	}
+	else
+	{
+		auto inst = context->newMachineInst();
+		inst->opcode = loadOps[dataSizeType];
+		inst->operands.push_back(newReg(node));
+		pushValueOperand(inst, node->operand, dataSizeType);
+		bb->code.push_back(inst);
+	}
 }
 
 void MachineInstSelection::inst(IRInstStore* node)
@@ -92,6 +118,22 @@ void MachineInstSelection::inst(IRInstStore* node)
 	static const MachineInstOpcode loadOps[] = { MachineInstOpcode::loadsd, MachineInstOpcode::loadss, MachineInstOpcode::load64, MachineInstOpcode::load32, MachineInstOpcode::load16, MachineInstOpcode::load8 };
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 	static const MachineInstOpcode storeOps[] = { MachineInstOpcode::storesd, MachineInstOpcode::storess, MachineInstOpcode::store64, MachineInstOpcode::store32, MachineInstOpcode::store16, MachineInstOpcode::store8 };
+
+	MachineOperand dstreg;
+	if (isConstantInt(node->operand2))
+	{
+		dstreg = newTempReg(MachineRegClass::gp);
+
+		auto movinst = context->newMachineInst();
+		movinst->opcode = MachineInstOpcode::mov64;
+		movinst->operands.push_back(dstreg);
+		pushValueOperand(movinst, node->operand2, 2);
+		bb->code.push_back(movinst);
+	}
+	else
+	{
+		dstreg = instRegister[node->operand2];
+	}
 
 	int dataSizeType = getDataSizeType(node->operand2->type->getPointerElementType());
 
@@ -125,7 +167,7 @@ void MachineInstSelection::inst(IRInstStore* node)
 
 		auto storeinst = context->newMachineInst();
 		storeinst->opcode = storeOps[dataSizeType];
-		pushValueOperand(storeinst, node->operand2, dataSizeType);
+		storeinst->operands.push_back(dstreg);
 		storeinst->operands.push_back(srcreg);
 		bb->code.push_back(storeinst);
 	}
@@ -133,7 +175,7 @@ void MachineInstSelection::inst(IRInstStore* node)
 	{
 		auto inst = context->newMachineInst();
 		inst->opcode = storeOps[dataSizeType];
-		pushValueOperand(inst, node->operand2, dataSizeType);
+		inst->operands.push_back(dstreg);
 		pushValueOperand(inst, node->operand1, dataSizeType);
 		bb->code.push_back(inst);
 	}
@@ -862,7 +904,6 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 		inst->operands.push_back(offsetoperand);
 		bb->code.push_back(inst);
 	}
-
 
 	mfunc->dynamicStackAllocations = true;
 	mfunc->registers[(int)RegisterName::rbp].cls = MachineRegClass::reserved;

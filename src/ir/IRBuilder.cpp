@@ -15,6 +15,11 @@ IRInstStore *IRBuilder::CreateStore(IRValue *a, IRValue *b)
 	return add<IRInstStore>(a, b);
 }
 
+IRInstAlloca* IRBuilder::CreateAlloca(IRType* type, IRValue* arraySize, const std::string& name)
+{
+	return add<IRInstAlloca>(bb->function->context, type, arraySize, name);
+}
+
 IRInstCall *IRBuilder::CreateCall(IRValue *func, const std::vector<IRValue *> &args)
 {
 	return add<IRInstCall>(func, args);

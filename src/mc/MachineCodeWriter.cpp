@@ -165,21 +165,28 @@ void MachineCodeWriter::lea(MachineInst* inst)
 	X64Instruction x64inst;
 	setR(x64inst, inst->operands[0]);
 
-	x64inst.disp = (int)inst->operands[2].immvalue;
-	x64inst.dispsize = (x64inst.disp > -127 && x64inst.disp < 127) ? 8 : 32;
-	if (inst->operands[1].registerIndex == (int)RegisterName::rsp || inst->operands[1].registerIndex == (int)RegisterName::r12)
+	if (inst->operands.size() == 3)
 	{
-		x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
-		x64inst.rm = 4;
-		x64inst.scale = 0;
-		x64inst.index = 4;
-		x64inst.base = getPhysReg(inst->operands[1]);
-		x64inst.sib = true;
+		x64inst.disp = (int)inst->operands[2].immvalue;
+		x64inst.dispsize = (x64inst.disp > -127 && x64inst.disp < 127) ? 8 : 32;
+		if (inst->operands[1].registerIndex == (int)RegisterName::rsp || inst->operands[1].registerIndex == (int)RegisterName::r12)
+		{
+			x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
+			x64inst.rm = 4;
+			x64inst.scale = 0;
+			x64inst.index = 4;
+			x64inst.base = getPhysReg(inst->operands[1]);
+			x64inst.sib = true;
+		}
+		else
+		{
+			x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
+			x64inst.rm = getPhysReg(inst->operands[1]);
+		}
 	}
 	else
 	{
-		x64inst.mod = (x64inst.dispsize == 8) ? 1 : 2;
-		x64inst.rm = getPhysReg(inst->operands[1]);
+		setM(x64inst, inst->operands[1], true);
 	}
 
 	writeInst(OpFlags::RexW, { 0x8d }, x64inst);
@@ -1159,6 +1166,13 @@ void MachineCodeWriter::setM(X64Instruction& x64inst, const MachineOperand& oper
 	else if (operand.type == MachineOperandType::constant)
 	{
 		x64inst.disp = -1;
+		x64inst.dispsize = 32;
+		x64inst.mod = 0;
+		x64inst.rm = 5;
+	}
+	else if (operand.type == MachineOperandType::imm)
+	{
+		x64inst.disp = (int32_t)operand.immvalue;
 		x64inst.dispsize = 32;
 		x64inst.mod = 0;
 		x64inst.rm = 5;

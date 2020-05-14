@@ -119,6 +119,16 @@ public:
 	MachineRegClass cls = MachineRegClass::reserved;
 };
 
+class MachineStackAlloc
+{
+public:
+	MachineStackAlloc() = default;
+	MachineStackAlloc(int registerIndex, size_t size) : registerIndex(registerIndex), size(size) { }
+
+	int registerIndex = 0;
+	size_t size = 0;
+};
+
 class MachineFunction
 {
 public:
@@ -128,6 +138,7 @@ public:
 	std::vector<MachineBasicBlock*> basicBlocks;
 	std::vector<MachineConstant> constants;
 	std::vector<MachineRegister> registers;
+	std::vector<MachineStackAlloc> stackvars;
 	int maxCallArgsSize = 0;
 	int frameBaseOffset = 0;
 	int spillBaseOffset = 0;

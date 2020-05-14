@@ -18,6 +18,8 @@ public:
 	IRInstLoad *CreateLoad(IRValue *);
 	IRInstStore *CreateStore(IRValue *, IRValue *);
 
+	IRInstAlloca* CreateAlloca(IRType* type, IRValue* arraySize, const std::string& name = {});
+
 	IRInstCall *CreateCall(IRValue *func, const std::vector<IRValue *> &args = {});
 
 	IRInstGEP *CreateGEP(IRValue *, const std::vector<IRValue *> &);

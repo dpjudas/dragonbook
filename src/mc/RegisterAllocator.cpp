@@ -18,6 +18,8 @@ void RegisterAllocator::run()
 	setupArgsUnix64();
 #endif
 
+	allocStackVars();
+
 	for (size_t i = 0; i < func->basicBlocks.size(); i++)
 	{
 		MachineBasicBlock* bb = func->basicBlocks[i];
@@ -342,6 +344,17 @@ void RegisterAllocator::createRegisterInfo()
 	}
 }
 
+void RegisterAllocator::allocStackVars()
+{
+	for (const MachineStackAlloc& stackvar : func->stackvars)
+	{
+		auto& vreg = reginfo[stackvar.registerIndex];
+		vreg.stacklocation.spillOffset = nextStackOffset;
+		vreg.stackvar = true;
+		nextStackOffset += (int)stackvar.size;
+	}
+}
+
 void RegisterAllocator::setAllToStack()
 {
 	for (RARegisterInfo &entry : reginfo)
@@ -421,6 +434,25 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 	{
 		vreg.physreg = pregIndex;
 		physreg.vreg = vregIndex;
+	}
+	else if (vreg.stackvar) // ptr to stack location
+	{
+		MachineOperand dest;
+		dest.type = MachineOperandType::reg;
+		dest.registerIndex = pregIndex;
+
+		MachineOperand src = vreg.stacklocation;
+
+		auto inst = context->newMachineInst();
+		inst->opcode = MachineInstOpcode::lea;
+		inst->operands.push_back(dest);
+		inst->operands.push_back(src);
+		inst->comment = "ptr vreg " + std::to_string(vregIndex);
+		emittedInstructions.push_back(inst);
+		usedRegs.insert((RegisterName)pregIndex);
+
+		physreg.vreg = vregIndex;
+		vreg.physreg = pregIndex;
 	}
 	else if (vreg.physreg == -1) // move from stack
 	{
