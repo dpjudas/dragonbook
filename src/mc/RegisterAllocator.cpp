@@ -644,7 +644,7 @@ void RegisterAllocator::setupArgsWin64()
 
 	volatileRegs =
 	{
-		RegisterName::rax, RegisterName::rcx, RegisterName::rdx,
+		RegisterName::rax, RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9, RegisterName::r10, RegisterName::r11,
 		RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5
 	};
 }
