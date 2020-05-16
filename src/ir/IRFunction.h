@@ -7,6 +7,16 @@ class IRFunctionType;
 class IRBasicBlock;
 class IRInstAlloca;
 
+class IRFunctionFileInfo
+{
+public:
+	IRFunctionFileInfo() = default;
+	IRFunctionFileInfo(std::string functionPrintableName, std::string sourceFilename) : functionPrintableName(functionPrintableName), sourceFilename(sourceFilename) { }
+
+	std::string functionPrintableName;
+	std::string sourceFilename;
+};
+
 class IRFunction : public IRConstant
 {
 public:
@@ -20,4 +30,5 @@ public:
 	std::vector<IRValue *> args;
 	std::vector<IRBasicBlock *> basicBlocks;
 	std::vector<IRInstAlloca *> stackVars;
+	std::vector<IRFunctionFileInfo> fileInfo;
 };

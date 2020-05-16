@@ -13,6 +13,10 @@ public:
 	using IRValue::IRValue;
 
 	virtual void visit(IRInstVisitor *visitor) = 0;
+
+	std::string comment;
+	int fileIndex = -1;
+	int lineNumber = -1;
 };
 
 class IRInstUnary : public IRInst
