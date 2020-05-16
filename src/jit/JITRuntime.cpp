@@ -1,5 +1,7 @@
 
 #include "JITRuntime.h"
+#include "StackTrace.h"
+#include "NativeSymbolResolver.h"
 #include "mc/MachineCodeHolder.h"
 #include <memory>
 
@@ -352,3 +354,51 @@ void* JITRuntime::allocJitMemory(size_t size)
 		return base;
 	}
 }
+
+std::vector<JITStackFrame> JITRuntime::captureStackTrace(int framesToSkip, bool includeNativeFrames)
+{
+	void* frames[32];
+	int numframes = StackTrace::Capture(32, frames);
+
+	std::unique_ptr<NativeSymbolResolver> nativeSymbols;
+	if (includeNativeFrames)
+		nativeSymbols.reset(new NativeSymbolResolver());
+
+	std::vector<JITStackFrame> jitframes;
+	for (int i = framesToSkip + 1; i < numframes; i++)
+	{
+		JITStackFrame frame = getStackFrame(nativeSymbols.get(), frames[i]);
+		if (frame)
+			jitframes.push_back(frame);
+	}
+	return jitframes;
+}
+
+JITStackFrame JITRuntime::getStackFrame(NativeSymbolResolver* nativeSymbols, void* pc)
+{
+	/*for (unsigned int i = 0; i < JitDebugInfo.Size(); i++)
+	{
+		const auto& info = JitDebugInfo[i];
+		if (pc >= info.start && pc < info.end)
+		{
+			return PCToStackFrameInfo((uint8_t*)pc, &info);
+		}
+	}*/
+
+	return nativeSymbols ? nativeSymbols->GetName(pc) : JITStackFrame();
+}
+/*
+JITStackFrame PCToStackFrameInfo(uint8_t* pc, const JitFuncInfo* info)
+{
+	int PCIndex = int(pc - ((uint8_t*)(info->start)));
+	if (info->LineInfo.Size() == 1) return info->LineInfo[0].LineNumber;
+	for (unsigned i = 1; i < info->LineInfo.Size(); i++)
+	{
+		if (info->LineInfo[i].InstructionIndex >= PCIndex)
+		{
+			return info->LineInfo[i - 1].LineNumber;
+		}
+	}
+	return -1;
+}
+*/

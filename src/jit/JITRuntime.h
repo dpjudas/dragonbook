@@ -10,6 +10,17 @@ class IRValue;
 class IRConstant;
 class IRGlobalVariable;
 class MachineCodeHolder;
+class NativeSymbolResolver;
+
+class JITStackFrame
+{
+public:
+	std::string PrintableName;
+	std::string FileName;
+	int LineNumber = -1;
+
+	explicit operator bool() const { return !PrintableName.empty() || !FileName.empty() || LineNumber != -1; }
+};
 
 class JITRuntime
 {
@@ -22,6 +33,8 @@ public:
 	void* getPointerToFunction(const std::string& func);
 	void* getPointerToGlobal(const std::string& variable);
 
+	std::vector<JITStackFrame> captureStackTrace(int framesToSkip, bool includeNativeFrames);
+
 private:
 	void initGlobal(int offset, IRConstant* value);
 
@@ -29,6 +42,8 @@ private:
 	void* allocJitMemory(size_t size);
 	void* virtualAlloc(size_t size);
 	void virtualFree(void* ptr);
+
+	JITStackFrame getStackFrame(NativeSymbolResolver* nativeSymbols, void* frame);
 
 	std::map<std::string, void*> functionTable;
 	std::map<std::string, size_t> globalTable;

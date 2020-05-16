@@ -8,12 +8,17 @@ set(LIB_SOURCES
 	ir/IRBuilder.h
 	ir/IRValue.h
 	ir/IRType.h
+	ir/IRInst.h
 	ir/IRInstVisitor.h
 	ir/IRBasicBlock.h
 	ir/IRFunction.cpp
 	ir/IRFunction.h
 	jit/JITRuntime.cpp
 	jit/JITRuntime.h
+	jit/NativeSymbolResolver.cpp
+	jit/NativeSymbolResolver.h
+	jit/StackTrace.cpp
+	jit/StackTrace.h
 	mc/RegisterAllocator.cpp
 	mc/RegisterAllocator.h
 	mc/MachineInstSelection.cpp
