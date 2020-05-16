@@ -25,11 +25,6 @@ IRContext::~IRContext()
 {
 }
 
-void IRContext::codegen()
-{
-	jit.compile(functions, globalVars, globalMappings);
-}
-
 std::string IRContext::getFunctionAssembly(IRFunction* func)
 {
 	MachineFunction* mcfunc = MachineInstSelection::codegen(func);
@@ -37,16 +32,6 @@ std::string IRContext::getFunctionAssembly(IRFunction* func)
 	AssemblyWriter writer(mcfunc);
 	writer.codegen();
 	return writer.output.str();
-}
-
-void *IRContext::getPointerToFunction(IRFunction *func)
-{
-	return jit.getPointerToFunction(func);
-}
-
-void* IRContext::getPointerToGlobal(IRGlobalVariable* variable)
-{
-	return jit.getPointerToGlobal(variable);
 }
 
 IRFunction *IRContext::getFunction(const std::string &name)

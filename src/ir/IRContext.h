@@ -28,12 +28,7 @@ public:
 	IRContext();
 	~IRContext();
 
-	void codegen();
-
 	std::string getFunctionAssembly(IRFunction* func);
-
-	void *getPointerToFunction(IRFunction *func);
-	void *getPointerToGlobal(IRGlobalVariable* variable);
 
 	IRFunction *getFunction(const std::string &name);
 	IRGlobalVariable *getNamedGlobal(const std::string &name);
@@ -131,7 +126,6 @@ private:
 	std::map<std::pair<IRType*, uint64_t>, IRConstantInt *> intConstants;
 	std::vector<IRConstantStruct *> constantStructs;
 	std::map<IRValue *, void *> globalMappings;
-	JITRuntime jit;
 
 	std::vector<std::unique_ptr<IRType>> allocatedTypes;
 	std::vector<std::unique_ptr<IRValue>> allocatedValues;
@@ -139,4 +133,6 @@ private:
 	std::vector<std::unique_ptr<MachineFunction>> allocatedMachineFunctions;
 	std::vector<std::unique_ptr<MachineBasicBlock>> allocatedMachineBBs;
 	std::vector<std::unique_ptr<MachineInst>> allocatedMachineInsts;
+
+	friend class JITRuntime;
 };

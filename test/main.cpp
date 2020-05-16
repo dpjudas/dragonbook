@@ -1,5 +1,6 @@
 
 #include "ir/IR.h"
+#include "jit/JITRuntime.h"
 #include <iostream>
 #include <exception>
 
@@ -31,11 +32,12 @@ void floattest()
 	builder.SetInsertPoint(func2->createBasicBlock("entry"));
 	builder.CreateRet(context.getConstantFloat(context.getFloatTy(), 42.0f));
 
-	context.codegen();
+	JITRuntime jit;
+	jit.add(&context);
 
 	std::cout << context.getFunctionAssembly(func) << std::endl;
 
-	float (*mainptr)(float, float, float, float, float, float) = reinterpret_cast<float(*)(float, float, float, float, float, float)>(context.getPointerToFunction(func));
+	float (*mainptr)(float, float, float, float, float, float) = reinterpret_cast<float(*)(float, float, float, float, float, float)>(jit.getPointerToFunction(func->name));
 	float r = mainptr(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f);
 	std::cout << "main returned: " << r << std::endl;
 }
@@ -50,11 +52,12 @@ void inttest()
 	builder.SetInsertPoint(func->createBasicBlock("entry"));
 	builder.CreateRet(builder.CreateUDiv(func->args[0], func->args[1]));
 
-	context.codegen();
+	JITRuntime jit;
+	jit.add(&context);
 
 	std::cout << context.getFunctionAssembly(func) << std::endl;
 
-	int (*mainptr)(int, int) = reinterpret_cast<int(*)(int, int)>(context.getPointerToFunction(func));
+	int (*mainptr)(int, int) = reinterpret_cast<int(*)(int, int)>(jit.getPointerToFunction(func->name));
 	int r = mainptr(-32, 2);
 	std::cout << "should return: " << (((uint32_t)(int32_t)-32) / 2) << std::endl;
 	std::cout << "main returned: " << r << std::endl;

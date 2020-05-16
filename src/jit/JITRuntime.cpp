@@ -41,16 +41,22 @@ JITRuntime::~JITRuntime()
 	}
 }
 
-void JITRuntime::compile(const std::map<std::string, IRFunction*>& functions, const std::map<std::string, IRGlobalVariable*>& variables, const std::map<IRValue*, void*>& globalMappings)
+void JITRuntime::add(IRContext* context)
 {
-	int globalsSize = 0;
+	auto& functions = context->functions;
+	auto& variables = context->globalVars;
+	auto& globalMappings = context->globalMappings;
+
+	size_t globalsSize = globals.size();
 	for (const auto& it : variables)
 	{
 		IRGlobalVariable* var = it.second;
 
 		int size = (var->type->getPointerElementType()->getTypeAllocSize() + 7) / 8 * 8;
-		var->globalsOffset = globalsSize;
+		var->globalsOffset = (int)globalsSize;
 		globalsSize += size;
+
+		globalTable[var->name] = var->globalsOffset;
 	}
 
 	globals.resize(globalsSize);
@@ -140,7 +146,7 @@ void JITRuntime::initGlobal(int offset, IRConstant* value)
 	}
 	else if (initFunc)
 	{
-		*reinterpret_cast<void**>(globals.data() + offset) = getPointerToFunction(initFunc);
+		*reinterpret_cast<void**>(globals.data() + offset) = getPointerToFunction(initFunc->name);
 	}
 	else
 	{
@@ -148,7 +154,7 @@ void JITRuntime::initGlobal(int offset, IRConstant* value)
 	}
 }
 
-void* JITRuntime::getPointerToFunction(IRFunction* func)
+void* JITRuntime::getPointerToFunction(const std::string& func)
 {
 	auto it = functionTable.find(func);
 	if (it != functionTable.end())
@@ -157,9 +163,13 @@ void* JITRuntime::getPointerToFunction(IRFunction* func)
 		return nullptr;
 }
 
-void* JITRuntime::getPointerToGlobal(IRGlobalVariable* var)
+void* JITRuntime::getPointerToGlobal(const std::string& var)
 {
-	return globals.data() + var->globalsOffset;
+	auto it = globalTable.find(var);
+	if (it != globalTable.end())
+		return globals.data() + it->second;
+	else
+		return nullptr;
 }
 
 #ifdef WIN32
@@ -211,11 +221,11 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 	{
 		if (!entry.external)
 		{
-			functionTable[entry.func] = baseaddr + entry.beginAddress;
+			functionTable[entry.func->name] = baseaddr + entry.beginAddress;
 		}
 		else
 		{
-			functionTable[entry.func] = (void*)entry.external;
+			functionTable[entry.func->name] = (void*)entry.external;
 		}
 	}
 #endif
@@ -297,11 +307,11 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 	{
 		if (!entry.external)
 		{
-			functionTable[entry.func] = baseaddr + entry.beginAddress;
+			functionTable[entry.func->name] = baseaddr + entry.beginAddress;
 		}
 		else
 		{
-			functionTable[entry.func] = (void*)entry.external;
+			functionTable[entry.func->name] = (void*)entry.external;
 		}
 	}
 }

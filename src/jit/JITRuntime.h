@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 
+class IRContext;
 class IRFunction;
 class IRValue;
 class IRConstant;
@@ -16,10 +17,10 @@ public:
 	JITRuntime();
 	~JITRuntime();
 
-	void compile(const std::map<std::string, IRFunction*> &functions, const std::map<std::string, IRGlobalVariable*> &variables, const std::map<IRValue*, void*> &globalMappings);
+	void add(IRContext* context);
 
-	void* getPointerToFunction(IRFunction* func);
-	void* getPointerToGlobal(IRGlobalVariable* variable);
+	void* getPointerToFunction(const std::string& func);
+	void* getPointerToGlobal(const std::string& variable);
 
 private:
 	void initGlobal(int offset, IRConstant* value);
@@ -29,7 +30,8 @@ private:
 	void* virtualAlloc(size_t size);
 	void virtualFree(void* ptr);
 
-	std::map<IRFunction*, void*> functionTable;
+	std::map<std::string, void*> functionTable;
+	std::map<std::string, size_t> globalTable;
 	std::vector<uint8_t> globals;
 
 	std::vector<uint8_t*> blocks;
