@@ -63,12 +63,71 @@ void inttest()
 	std::cout << "main returned: " << r << std::endl;
 }
 
+void sexttest()
+{
+	IRContext context;
+	IRType* int64Ty = context.getInt64Ty();
+	IRType* int32Ty = context.getInt32Ty();
+	IRType* int16Ty = context.getInt16Ty();
+	IRType* int8Ty = context.getInt8Ty();
+
+	std::vector<IRFunction*> funcs;
+	funcs.push_back(context.createFunction(context.getFunctionType(int64Ty, { int8Ty }), "int8_to_64"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int32Ty, { int8Ty }), "int8_to_32"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int16Ty, { int8Ty }), "int8_to_16"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int8Ty, { int8Ty }), "int8_to_8"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int64Ty, { int16Ty }), "int16_to_64"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int32Ty, { int16Ty }), "int16_to_32"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int16Ty, { int16Ty }), "int16_to_16"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int64Ty, { int32Ty }), "int32_to_64"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int32Ty, { int32Ty }), "int32_to_32"));
+	funcs.push_back(context.createFunction(context.getFunctionType(int64Ty, { int64Ty }), "int64_to_64"));
+
+	for (IRFunction* func : funcs)
+	{
+		IRBuilder builder;
+		builder.SetInsertPoint(func->createBasicBlock("entry"));
+		builder.CreateRet(builder.CreateSExt(func->args[0], static_cast<IRFunctionType*>(func->type)->returnType));
+	}
+
+	JITRuntime jit;
+	jit.add(&context);
+
+	int64_t(*int8_to_64)(int8_t) = reinterpret_cast<int64_t(*)(int8_t)>(jit.getPointerToFunction("int8_to_64"));
+	int32_t(*int8_to_32)(int8_t) = reinterpret_cast<int32_t(*)(int8_t)>(jit.getPointerToFunction("int8_to_32"));
+	int16_t(*int8_to_16)(int8_t) = reinterpret_cast<int16_t(*)(int8_t)>(jit.getPointerToFunction("int8_to_16"));
+	int8_t(*int8_to_8)(int8_t) = reinterpret_cast<int8_t(*)(int8_t)>(jit.getPointerToFunction("int8_to_8"));
+	int64_t(*int16_to_64)(int16_t) = reinterpret_cast<int64_t(*)(int16_t)>(jit.getPointerToFunction("int16_to_64"));
+	int32_t(*int16_to_32)(int16_t) = reinterpret_cast<int32_t(*)(int16_t)>(jit.getPointerToFunction("int16_to_32"));
+	int16_t(*int16_to_16)(int16_t) = reinterpret_cast<int16_t(*)(int16_t)>(jit.getPointerToFunction("int16_to_16"));
+	int64_t(*int32_to_64)(int32_t) = reinterpret_cast<int64_t(*)(int32_t)>(jit.getPointerToFunction("int32_to_64"));
+	int32_t(*int32_to_32)(int32_t) = reinterpret_cast<int32_t(*)(int32_t)>(jit.getPointerToFunction("int32_to_32"));
+	int64_t(*int64_to_64)(int64_t) = reinterpret_cast<int64_t(*)(int64_t)>(jit.getPointerToFunction("int64_to_64"));
+
+	int8_to_32(-100);
+
+	std::cout << int8_to_64(-100) << ", " << int8_to_64(100) << std::endl;
+	std::cout << int8_to_32(-100) << ", " << int8_to_32(100) << std::endl;
+	std::cout << int8_to_16(-100) << ", " << int8_to_16(100) << std::endl;
+	std::cout << (int)int8_to_8(-100) << ", " << (int)int8_to_8(100) << std::endl;
+	std::cout << std::endl;
+	std::cout << int16_to_64(-2000) << ", " << int16_to_64(2000) << std::endl;
+	std::cout << int16_to_32(-2000) << ", " << int16_to_32(2000) << std::endl;
+	std::cout << int16_to_16(-2000) << ", " << int16_to_16(2000) << std::endl;
+	std::cout << std::endl;
+	std::cout << int32_to_64(-200000) << ", " << int32_to_64(200000) << std::endl;
+	std::cout << int32_to_32(-200000) << ", " << int32_to_32(200000) << std::endl;
+	std::cout << std::endl;
+	std::cout << int64_to_64(-234567) << ", " << int64_to_64(234567) << std::endl;
+}
+
 int main(int argc, char** argv)
 {
 	try
 	{
 		//floattest();
-		inttest();
+		//inttest();
+		sexttest();
 
 		return 0;
 	}
