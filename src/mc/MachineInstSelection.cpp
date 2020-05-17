@@ -388,7 +388,7 @@ void MachineInstSelection::inst(IRInstZExt* node)
 		emitInst(MachineInstOpcode::xor64, dst, dst);
 	}
 
-	emitInst(movsxOps[dstDataSizeType * 6 + srcDataSizeType], dst, node->value, srcDataSizeType);
+	emitInst(movsxOps[srcDataSizeType * 6 + dstDataSizeType], dst, node->value, srcDataSizeType);
 }
 
 void MachineInstSelection::inst(IRInstSExt* node)
@@ -406,7 +406,7 @@ void MachineInstSelection::inst(IRInstSExt* node)
 	int dstDataSizeType = getDataSizeType(node->type);
 	int srcDataSizeType = getDataSizeType(node->value->type);
 	auto dst = newReg(node);
-	emitInst(movsxOps[dstDataSizeType * 6 + srcDataSizeType], dst, node->value, srcDataSizeType);
+	emitInst(movsxOps[srcDataSizeType * 6 + dstDataSizeType], dst, node->value, srcDataSizeType);
 }
 
 void MachineInstSelection::inst(IRInstFPTrunc* node)
