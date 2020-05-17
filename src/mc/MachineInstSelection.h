@@ -96,6 +96,16 @@ private:
 	void pushValueOperand(MachineInst* inst, IRValue* operand, int dataSizeType);
 	void pushBBOperand(MachineInst* inst, IRBasicBlock* bb);
 
+	void emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3);
+	void emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType, const MachineOperand& operand3);
+	void emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, const MachineOperand& operand2);
+	void emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType);
+	void emitInst(MachineInstOpcode opcode, IRValue* operand1, int dataSizeType, const MachineOperand& operand2);
+	void emitInst(MachineInstOpcode opcode, const MachineOperand &operand);
+	void emitInst(MachineInstOpcode opcode, IRValue* operand, int dataSizeType);
+	void emitInst(MachineInstOpcode opcode, IRBasicBlock* target);
+	void emitInst(MachineInstOpcode opcode, MachineBasicBlock* target);
+
 	int getDataSizeType(IRType* type);
 
 	uint64_t getConstantValueInt(IRValue* value);

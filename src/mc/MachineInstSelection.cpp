@@ -90,26 +90,12 @@ void MachineInstSelection::inst(IRInstLoad* node)
 	if (isConstantInt(node->operand))
 	{
 		auto srcreg = newTempReg(MachineRegClass::gp);
-
-		auto movinst = context->newMachineInst();
-		movinst->opcode = MachineInstOpcode::mov64;
-		movinst->operands.push_back(srcreg);
-		pushValueOperand(movinst, node->operand, 2);
-		bb->code.push_back(movinst);
-
-		auto loadinst = context->newMachineInst();
-		loadinst->opcode = loadOps[dataSizeType];
-		loadinst->operands.push_back(newReg(node));
-		loadinst->operands.push_back(srcreg);
-		bb->code.push_back(loadinst);
+		emitInst(MachineInstOpcode::mov64, srcreg, node->operand, 2);
+		emitInst(loadOps[dataSizeType], newReg(node), srcreg);
 	}
 	else
 	{
-		auto inst = context->newMachineInst();
-		inst->opcode = loadOps[dataSizeType];
-		inst->operands.push_back(newReg(node));
-		pushValueOperand(inst, node->operand, dataSizeType);
-		bb->code.push_back(inst);
+		emitInst(loadOps[dataSizeType], newReg(node), node->operand, dataSizeType);
 	}
 }
 
@@ -123,12 +109,7 @@ void MachineInstSelection::inst(IRInstStore* node)
 	if (isConstantInt(node->operand2))
 	{
 		dstreg = newTempReg(MachineRegClass::gp);
-
-		auto movinst = context->newMachineInst();
-		movinst->opcode = MachineInstOpcode::mov64;
-		movinst->operands.push_back(dstreg);
-		pushValueOperand(movinst, node->operand2, 2);
-		bb->code.push_back(movinst);
+		emitInst(MachineInstOpcode::mov64, dstreg, node->operand2, 2);
 	}
 	else
 	{
@@ -142,42 +123,18 @@ void MachineInstSelection::inst(IRInstStore* node)
 	if (isMemToMem)
 	{
 		auto srcreg = newTempReg(dataSizeType < 2 ? MachineRegClass::xmm : MachineRegClass::gp);
-
-		auto loadinst = context->newMachineInst();
-		loadinst->opcode = loadOps[dataSizeType];
-		loadinst->operands.push_back(srcreg);
-		pushValueOperand(loadinst, node->operand1, dataSizeType);
-		bb->code.push_back(loadinst);
-
-		auto storeinst = context->newMachineInst();
-		storeinst->opcode = storeOps[dataSizeType];
-		pushValueOperand(storeinst, node->operand2, dataSizeType);
-		storeinst->operands.push_back(srcreg);
-		bb->code.push_back(storeinst);
+		emitInst(loadOps[dataSizeType], srcreg, node->operand1, dataSizeType);
+		emitInst(storeOps[dataSizeType], node->operand2, dataSizeType, srcreg);
 	}
 	else if (needs64BitImm)
 	{
 		auto srcreg = newTempReg(MachineRegClass::gp);
-
-		auto movinst = context->newMachineInst();
-		movinst->opcode = movOps[dataSizeType];
-		movinst->operands.push_back(srcreg);
-		pushValueOperand(movinst, node->operand1, dataSizeType);
-		bb->code.push_back(movinst);
-
-		auto storeinst = context->newMachineInst();
-		storeinst->opcode = storeOps[dataSizeType];
-		storeinst->operands.push_back(dstreg);
-		storeinst->operands.push_back(srcreg);
-		bb->code.push_back(storeinst);
+		emitInst(movOps[dataSizeType], srcreg, node->operand1, dataSizeType);
+		emitInst(storeOps[dataSizeType], dstreg, srcreg);
 	}
 	else
 	{
-		auto inst = context->newMachineInst();
-		inst->opcode = storeOps[dataSizeType];
-		inst->operands.push_back(dstreg);
-		pushValueOperand(inst, node->operand1, dataSizeType);
-		bb->code.push_back(inst);
+		emitInst(storeOps[dataSizeType], dstreg, node->operand1, dataSizeType);
 	}
 }
 
@@ -212,19 +169,8 @@ void MachineInstSelection::inst(IRInstNot* node)
 
 	int dataSizeType = getDataSizeType(node->type);
 	auto dst = newReg(node);
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand, dataSizeType);
-		bb->code.push_back(inst);
-	}
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = notOps[dataSizeType];
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
-	}
+	emitInst(movOps[dataSizeType], dst, node->operand, dataSizeType);
+	emitInst(notOps[dataSizeType], dst);
 }
 
 void MachineInstSelection::inst(IRInstNeg* node)
@@ -234,19 +180,8 @@ void MachineInstSelection::inst(IRInstNeg* node)
 
 	int dataSizeType = getDataSizeType(node->type);
 	auto dst = newReg(node);
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand, dataSizeType);
-		bb->code.push_back(inst);
-	}
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = negOps[dataSizeType];
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
-	}
+	emitInst(movOps[dataSizeType], dst, node->operand, dataSizeType);
+	emitInst(negOps[dataSizeType], dst);
 }
 
 void MachineInstSelection::inst(IRInstFNeg* node)
@@ -256,20 +191,8 @@ void MachineInstSelection::inst(IRInstFNeg* node)
 
 	int dataSizeType = getDataSizeType(node->type);
 	auto dst = newReg(node);
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = xorOps[dataSizeType];
-		inst->operands.push_back(dst);
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
-	}
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = subOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand, dataSizeType);
-		bb->code.push_back(inst);
-	}
+	emitInst(xorOps[dataSizeType], dst, dst);
+	emitInst(subOps[dataSizeType], dst, node->operand, dataSizeType);
 }
 
 void MachineInstSelection::inst(IRInstMul* node)
@@ -437,11 +360,7 @@ void MachineInstSelection::inst(IRInstTrunc* node)
 	int dataSizeType = getDataSizeType(node->type);
 
 	auto dst = newReg(node);
-	auto inst = context->newMachineInst();
-	inst->opcode = movOps[dataSizeType];
-	inst->operands.push_back(dst);
-	pushValueOperand(inst, node->value, dataSizeType);
-	bb->code.push_back(inst);
+	emitInst(movOps[dataSizeType], dst, node->value, dataSizeType);
 }
 
 void MachineInstSelection::inst(IRInstZExt* node)
@@ -462,18 +381,10 @@ void MachineInstSelection::inst(IRInstZExt* node)
 
 	if (dstDataSizeType == 2 && srcDataSizeType == 3)
 	{
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::xor64;
-		inst->operands.push_back(dst);
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
+		emitInst(MachineInstOpcode::xor64, dst, dst);
 	}
 
-	auto inst = context->newMachineInst();
-	inst->opcode = movsxOps[dstDataSizeType * 6 + srcDataSizeType];
-	inst->operands.push_back(dst);
-	pushValueOperand(inst, node->value, srcDataSizeType);
-	bb->code.push_back(inst);
+	emitInst(movsxOps[dstDataSizeType * 6 + srcDataSizeType], dst, node->value, srcDataSizeType);
 }
 
 void MachineInstSelection::inst(IRInstSExt* node)
@@ -491,31 +402,19 @@ void MachineInstSelection::inst(IRInstSExt* node)
 	int dstDataSizeType = getDataSizeType(node->type);
 	int srcDataSizeType = getDataSizeType(node->value->type);
 	auto dst = newReg(node);
-	auto inst = context->newMachineInst();
-	inst->opcode = movsxOps[dstDataSizeType * 6 + srcDataSizeType];
-	inst->operands.push_back(dst);
-	pushValueOperand(inst, node->value, srcDataSizeType);
-	bb->code.push_back(inst);
+	emitInst(movsxOps[dstDataSizeType * 6 + srcDataSizeType], dst, node->value, srcDataSizeType);
 }
 
 void MachineInstSelection::inst(IRInstFPTrunc* node)
 {
 	auto dst = newReg(node);
-	auto inst = context->newMachineInst();
-	inst->opcode = isConstantFP(node->value) ? MachineInstOpcode::movss : MachineInstOpcode::cvtsd2ss;
-	inst->operands.push_back(dst);
-	pushValueOperand(inst, node->value, 1);
-	bb->code.push_back(inst);
+	emitInst(isConstantFP(node->value) ? MachineInstOpcode::movss : MachineInstOpcode::cvtsd2ss, dst, node->value, 1);
 }
 
 void MachineInstSelection::inst(IRInstFPExt* node)
 {
 	auto dst = newReg(node);
-	auto inst = context->newMachineInst();
-	inst->opcode = isConstantFP(node->value) ? MachineInstOpcode::movsd : MachineInstOpcode::cvtss2sd;
-	inst->operands.push_back(dst);
-	pushValueOperand(inst, node->value, 0);
-	bb->code.push_back(inst);
+	emitInst(isConstantFP(node->value) ? MachineInstOpcode::movsd : MachineInstOpcode::cvtss2sd, dst, node->value, 0);
 }
 
 void MachineInstSelection::inst(IRInstFPToUI* node)
@@ -526,11 +425,7 @@ void MachineInstSelection::inst(IRInstFPToUI* node)
 		int dstDataSizeType = getDataSizeType(node->type);
 
 		auto dst = newReg(node);
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dstDataSizeType];
-		inst->operands.push_back(dst);
-		inst->operands.push_back(newImm((uint64_t)getConstantValueDouble(node->value)));
-		bb->code.push_back(inst);
+		emitInst(movOps[dstDataSizeType], dst, newImm((uint64_t)getConstantValueDouble(node->value)));
 	}
 	else
 	{
@@ -538,11 +433,7 @@ void MachineInstSelection::inst(IRInstFPToUI* node)
 		int srcDataSizeType = getDataSizeType(node->value->type);
 
 		auto dst = newReg(node);
-		auto inst = context->newMachineInst();
-		inst->opcode = cvtOps[srcDataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->value, srcDataSizeType);
-		bb->code.push_back(inst);
+		emitInst(cvtOps[srcDataSizeType], dst, node->value, srcDataSizeType);
 	}
 }
 
@@ -554,11 +445,7 @@ void MachineInstSelection::inst(IRInstFPToSI* node)
 		int dstDataSizeType = getDataSizeType(node->type);
 
 		auto dst = newReg(node);
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dstDataSizeType];
-		inst->operands.push_back(dst);
-		inst->operands.push_back(newImm((uint64_t)(int64_t)getConstantValueDouble(node->value)));
-		bb->code.push_back(inst);
+		emitInst(movOps[dstDataSizeType], dst, newImm((uint64_t)(int64_t)getConstantValueDouble(node->value)));
 	}
 	else
 	{
@@ -566,11 +453,7 @@ void MachineInstSelection::inst(IRInstFPToSI* node)
 		int srcDataSizeType = getDataSizeType(node->value->type);
 
 		auto dst = newReg(node);
-		auto inst = context->newMachineInst();
-		inst->opcode = cvtOps[srcDataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->value, srcDataSizeType);
-		bb->code.push_back(inst);
+		emitInst(cvtOps[srcDataSizeType], dst, node->value, srcDataSizeType);
 	}
 }
 
@@ -584,49 +467,21 @@ void MachineInstSelection::inst(IRInstUIToFP* node)
 	if (isConstantInt(node->value))
 	{
 		auto dst = newReg(node);
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dstDataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->value, dstDataSizeType);
-		bb->code.push_back(inst);
+		emitInst(movOps[dstDataSizeType], dst, node->value, dstDataSizeType);
 	}
 	else if (srcDataSizeType != 2) // zero extend required
 	{
 		auto tmp = newTempReg(MachineRegClass::gp);
+		auto dst = newReg(node);
 
-		{
-			auto inst = context->newMachineInst();
-			inst->opcode = MachineInstOpcode::xor64;
-			inst->operands.push_back(tmp);
-			inst->operands.push_back(tmp);
-			bb->code.push_back(inst);
-		}
-
-		{
-			auto inst = context->newMachineInst();
-			inst->opcode = movOps[srcDataSizeType];
-			inst->operands.push_back(tmp);
-			pushValueOperand(inst, node->value, srcDataSizeType);
-			bb->code.push_back(inst);
-		}
-
-		{
-			auto dst = newReg(node);
-			auto inst = context->newMachineInst();
-			inst->opcode = cvtOps[dstDataSizeType];
-			inst->operands.push_back(dst);
-			inst->operands.push_back(tmp);
-			bb->code.push_back(inst);
-		}
+		emitInst(MachineInstOpcode::xor64, tmp, tmp);
+		emitInst(movOps[srcDataSizeType], tmp, node->value, srcDataSizeType);
+		emitInst(cvtOps[dstDataSizeType], dst, tmp);
 	}
 	else
 	{
 		auto dst = newReg(node);
-		auto inst = context->newMachineInst();
-		inst->opcode = cvtOps[dstDataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->value, dstDataSizeType);
-		bb->code.push_back(inst);
+		emitInst(cvtOps[dstDataSizeType], dst, node->value, dstDataSizeType);
 	}
 }
 
@@ -640,63 +495,27 @@ void MachineInstSelection::inst(IRInstSIToFP* node)
 	if (isConstantInt(node->value))
 	{
 		auto dst = newReg(node);
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dstDataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->value, dstDataSizeType);
-		bb->code.push_back(inst);
+		emitInst(movOps[dstDataSizeType], dst, node->value, dstDataSizeType);
 	}
 	else if (srcDataSizeType != dstDataSizeType + 2) // sign extend required
 	{
-		auto tmp = newTempReg(MachineRegClass::gp);
-
 		static const int bits[] = { 64, 32, 64, 32, 16, 8 };
 		int dstbits = bits[dstDataSizeType];
 		int srcbits = bits[srcDataSizeType];
 		int bitcount = dstbits - srcbits;
 		auto count = newImm(bitcount);
+		auto tmp = newTempReg(MachineRegClass::gp);
+		auto dst = newReg(node);
 
-		{
-			auto inst = context->newMachineInst();
-			inst->opcode = movOps[srcDataSizeType];
-			inst->operands.push_back(tmp);
-			pushValueOperand(inst, node->value, srcDataSizeType);
-			bb->code.push_back(inst);
-		}
-
-		{
-			auto inst = context->newMachineInst();
-			inst->opcode = (dstDataSizeType == 0) ? MachineInstOpcode::shl64 : MachineInstOpcode::shl32;
-			inst->operands.push_back(tmp);
-			inst->operands.push_back(count);
-			bb->code.push_back(inst);
-		}
-
-		{
-			auto inst = context->newMachineInst();
-			inst->opcode = (dstDataSizeType == 0) ? MachineInstOpcode::sar64 : MachineInstOpcode::sar32;
-			inst->operands.push_back(tmp);
-			inst->operands.push_back(count);
-			bb->code.push_back(inst);
-		}
-
-		{
-			auto dst = newReg(node);
-			auto inst = context->newMachineInst();
-			inst->opcode = cvtOps[dstDataSizeType];
-			inst->operands.push_back(dst);
-			inst->operands.push_back(tmp);
-			bb->code.push_back(inst);
-		}
+		emitInst(movOps[srcDataSizeType], tmp, node->value, srcDataSizeType);
+		emitInst((dstDataSizeType == 0) ? MachineInstOpcode::shl64 : MachineInstOpcode::shl32, tmp, count);
+		emitInst((dstDataSizeType == 0) ? MachineInstOpcode::sar64 : MachineInstOpcode::sar32, tmp, count);
+		emitInst(cvtOps[dstDataSizeType], dst, tmp);
 	}
 	else
 	{
 		auto dst = newReg(node);
-		auto inst = context->newMachineInst();
-		inst->opcode = cvtOps[dstDataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->value, dstDataSizeType);
-		bb->code.push_back(inst);
+		emitInst(cvtOps[dstDataSizeType], dst, node->value, dstDataSizeType);
 	}
 }
 
@@ -709,11 +528,7 @@ void MachineInstSelection::inst(IRInstBitCast* node)
 		int dataSizeType = getDataSizeType(node->value->type);
 		auto dst = newReg(node);
 
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->value, dataSizeType);
-		bb->code.push_back(inst);
+		emitInst(movOps[dataSizeType], dst, node->value, dataSizeType);
 	}
 	else
 	{
@@ -762,68 +577,33 @@ void MachineInstSelection::inst(IRInstGEP* node)
 
 	if (isConstantInt(node->ptr))
 	{
-		MachineOperand src = newImm(getConstantValueInt(node->ptr) + (int64_t)offset);
-
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::mov64;
-		inst->operands.push_back(dst);
-		inst->operands.push_back(src);
-		bb->code.push_back(inst);
+		emitInst(MachineInstOpcode::mov64, dst, newImm(getConstantValueInt(node->ptr) + (int64_t)offset));
 	}
 	else
 	{
-		MachineOperand offsetoperand = newImm((int64_t)offset);
-
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::lea;
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->ptr, getDataSizeType(node->ptr->type));
-		inst->operands.push_back(offsetoperand);
-		bb->code.push_back(inst);
+		emitInst(MachineInstOpcode::lea, dst, node->ptr, getDataSizeType(node->ptr->type), newImm((int64_t)offset));
 	}
 }
 
 void MachineInstSelection::inst(IRInstBr* node)
 {
-	auto inst = context->newMachineInst();
-	inst->opcode = MachineInstOpcode::jmp;
-	pushBBOperand(inst, node->bb);
-	bb->code.push_back(inst);
+	emitInst(MachineInstOpcode::jmp, node->bb);
 }
 
 void MachineInstSelection::inst(IRInstCondBr* node)
 {
 	if (isConstant(node->condition))
 	{
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::jmp;
 		if (getConstantValueInt(node->condition))
-			pushBBOperand(inst, node->bb1);
+			emitInst(MachineInstOpcode::jmp, node->bb1);
 		else
-			pushBBOperand(inst, node->bb2);
-		bb->code.push_back(inst);
+			emitInst(MachineInstOpcode::jmp, node->bb2);
 	}
 	else
 	{
-		{
-			auto inst = context->newMachineInst();
-			inst->opcode = MachineInstOpcode::cmp32;
-			pushValueOperand(inst, node->condition, 3);
-			inst->operands.push_back(newImm(1));
-			bb->code.push_back(inst);
-		}
-		{
-			auto inst = context->newMachineInst();
-			inst->opcode = MachineInstOpcode::je;
-			pushBBOperand(inst, node->bb1);
-			bb->code.push_back(inst);
-		}
-		{
-			auto inst = context->newMachineInst();
-			inst->opcode = MachineInstOpcode::jmp;
-			pushBBOperand(inst, node->bb2);
-			bb->code.push_back(inst);
-		}
+		emitInst(MachineInstOpcode::cmp32, node->condition, 3, newImm(1));
+		emitInst(MachineInstOpcode::je, node->bb1);
+		emitInst(MachineInstOpcode::jmp, node->bb2);
 	}
 }
 
@@ -831,36 +611,16 @@ void MachineInstSelection::inst(IRInstRet* node)
 {
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 
-	{
-		int dataSizeType = getDataSizeType(static_cast<IRFunctionType*>(sfunc->type)->returnType);
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(newPhysReg(dataSizeType < 2 ? RegisterName::xmm0 : RegisterName::rax));
-		pushValueOperand(inst, node->operand, dataSizeType);
-		bb->code.push_back(inst);
-	}
-	{
-		MachineOperand operand;
-		operand.type = MachineOperandType::basicblock;
-		operand.bb = mfunc->epilog;
+	int dataSizeType = getDataSizeType(static_cast<IRFunctionType*>(sfunc->type)->returnType);
+	MachineOperand dst = newPhysReg(dataSizeType < 2 ? RegisterName::xmm0 : RegisterName::rax);
 
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::jmp;
-		inst->operands.push_back(operand);
-		bb->code.push_back(inst);
-	}
+	emitInst(movOps[dataSizeType], dst, node->operand, dataSizeType);
+	emitInst(MachineInstOpcode::jmp, mfunc->epilog);
 }
 
 void MachineInstSelection::inst(IRInstRetVoid* node)
 {
-	MachineOperand operand;
-	operand.type = MachineOperandType::basicblock;
-	operand.bb = mfunc->epilog;
-
-	auto inst = context->newMachineInst();
-	inst->opcode = MachineInstOpcode::jmp;
-	inst->operands.push_back(operand);
-	bb->code.push_back(inst);
+	emitInst(MachineInstOpcode::jmp, mfunc->epilog);
 }
 
 void MachineInstSelection::inst(IRInstAlloca* node)
@@ -869,16 +629,7 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 	size = (size + 15) / 16 * 16;
 
 	// sub rsp,size
-	{
-		MachineOperand src = newImm(size);
-		MachineOperand dst = newPhysReg(RegisterName::rsp);
-
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::sub64;
-		inst->operands.push_back(dst);
-		inst->operands.push_back(src);
-		bb->code.push_back(inst);
-	}
+	emitInst(MachineInstOpcode::sub64, newPhysReg(RegisterName::rsp), newImm(size));
 
 	MachineOperand dst = newReg(node);
 	MachineOperand src = newPhysReg(RegisterName::rsp);
@@ -886,23 +637,12 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 	if (mfunc->maxCallArgsSize == 0)
 	{
 		// mov vreg,rsp
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::mov64;
-		inst->operands.push_back(dst);
-		inst->operands.push_back(src);
-		bb->code.push_back(inst);
+		emitInst(MachineInstOpcode::mov64, dst, src);
 	}
 	else
 	{
 		// lea vreg,ptr[rsp+maxCallArgsSize]
-		MachineOperand offsetoperand = newImm(mfunc->maxCallArgsSize);
-
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::lea;
-		inst->operands.push_back(dst);
-		inst->operands.push_back(src);
-		inst->operands.push_back(offsetoperand);
-		bb->code.push_back(inst);
+		emitInst(MachineInstOpcode::lea, dst, src, newImm(mfunc->maxCallArgsSize));
 	}
 
 	mfunc->dynamicStackAllocations = true;
@@ -970,11 +710,7 @@ void MachineInstSelection::callWin64(IRInstCall* node)
 			else
 				dst.registerIndex = (int)regvars[i];
 
-			auto inst = context->newMachineInst();
-			inst->opcode = isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType];
-			inst->operands.push_back(dst);
-			pushValueOperand(inst, arg, dataSizeType);
-			bb->code.push_back(inst);
+			emitInst(isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType], dst, arg, dataSizeType);
 		}
 		else
 		{
@@ -984,78 +720,37 @@ void MachineInstSelection::callWin64(IRInstCall* node)
 
 			if (isMemSrc)
 			{
-				MachineOperand tmpreg;
-				tmpreg.type = MachineOperandType::reg;
-				tmpreg.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
-
-				auto loadinst = context->newMachineInst();
-				loadinst->opcode = loadOps[dataSizeType];
-				loadinst->operands.push_back(tmpreg);
-				pushValueOperand(loadinst, arg, dataSizeType);
-				bb->code.push_back(loadinst);
-
-				auto storeinst = context->newMachineInst();
-				storeinst->opcode = storeOps[dataSizeType];
-				storeinst->operands.push_back(dst);
-				storeinst->operands.push_back(tmpreg);
-				bb->code.push_back(storeinst);
+				MachineOperand tmpreg = newPhysReg(isXmm ? RegisterName::xmm0 : RegisterName::rax);
+				emitInst(loadOps[dataSizeType], tmpreg, arg, dataSizeType);
+				emitInst(storeOps[dataSizeType], dst, tmpreg);
 			}
 			else if (needs64BitImm)
 			{
-				MachineOperand tmpreg;
-				tmpreg.type = MachineOperandType::reg;
-				tmpreg.registerIndex = (int)RegisterName::rax;
-
-				auto movinst = context->newMachineInst();
-				movinst->opcode = movOps[dataSizeType];
-				movinst->operands.push_back(tmpreg);
-				pushValueOperand(movinst, arg, dataSizeType);
-				bb->code.push_back(movinst);
-
-				auto storeinst = context->newMachineInst();
-				storeinst->opcode = storeOps[dataSizeType];
-				storeinst->operands.push_back(dst);
-				storeinst->operands.push_back(tmpreg);
-				bb->code.push_back(storeinst);
+				MachineOperand tmpreg = newPhysReg(RegisterName::rax);
+				emitInst(movOps[dataSizeType], tmpreg, arg, dataSizeType);
+				emitInst(storeOps[dataSizeType], dst, tmpreg);
 			}
 			else
 			{
-				auto inst = context->newMachineInst();
-				inst->opcode = storeOps[dataSizeType];
-				inst->operands.push_back(dst);
-				pushValueOperand(inst, arg, dataSizeType);
-				bb->code.push_back(inst);
+				emitInst(storeOps[dataSizeType], dst, arg, dataSizeType);
 			}
 		}
 	}
 
 	// Call the function
+	MachineOperand target;
+	IRFunction* func = dynamic_cast<IRFunction*>(node->func);
+	if (func)
 	{
-		MachineOperand dst;
-
-		IRFunction* func = dynamic_cast<IRFunction*>(node->func);
-		if (func)
-		{
-			dst.type = MachineOperandType::func;
-			dst.func = func;
-		}
-		else
-		{
-			dst.type = MachineOperandType::reg;
-			dst.registerIndex = (int)RegisterName::rax;
-
-			auto inst = context->newMachineInst();
-			inst->opcode = MachineInstOpcode::mov64;
-			inst->operands.push_back(dst);
-			inst->operands.push_back(instRegister[node->func]);
-			bb->code.push_back(inst);
-		}
-
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::call;
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
+		target.type = MachineOperandType::func;
+		target.func = func;
 	}
+	else
+	{
+		target = newPhysReg(RegisterName::rax);
+		emitInst(MachineInstOpcode::mov64, target, instRegister[node->func]);
+	}
+	emitInst(MachineInstOpcode::call, target);
 
 	// Move return value to virtual register
 	if (node->type != context->getVoidTy())
@@ -1063,17 +758,10 @@ void MachineInstSelection::callWin64(IRInstCall* node)
 		int dataSizeType = getDataSizeType(node->type);
 		bool isXmm = dataSizeType < 2;
 
-		MachineOperand src;
-		src.type = MachineOperandType::reg;
-		src.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
-
+		MachineOperand src = newPhysReg(isXmm ? RegisterName::xmm0 : RegisterName::rax);
 		auto dst = newReg(node);
 
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		inst->operands.push_back(src);
-		bb->code.push_back(inst);
+		emitInst(movOps[dataSizeType], dst, src);
 	}
 }
 
@@ -1109,11 +797,7 @@ void MachineInstSelection::callUnix64(IRInstCall* node)
 			else
 				dst.registerIndex = (int)regvars[nextRegisterArg++];
 
-			auto inst = context->newMachineInst();
-			inst->opcode = isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType];
-			inst->operands.push_back(dst);
-			pushValueOperand(inst, arg, dataSizeType);
-			bb->code.push_back(inst);
+			emitInst(isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType], dst, arg, dataSizeType);
 		}
 		else
 		{
@@ -1123,78 +807,37 @@ void MachineInstSelection::callUnix64(IRInstCall* node)
 
 			if (isMemSrc)
 			{
-				MachineOperand tmpreg;
-				tmpreg.type = MachineOperandType::reg;
-				tmpreg.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
-
-				auto loadinst = context->newMachineInst();
-				loadinst->opcode = loadOps[dataSizeType];
-				loadinst->operands.push_back(tmpreg);
-				pushValueOperand(loadinst, arg, dataSizeType);
-				bb->code.push_back(loadinst);
-
-				auto storeinst = context->newMachineInst();
-				storeinst->opcode = storeOps[dataSizeType];
-				storeinst->operands.push_back(dst);
-				storeinst->operands.push_back(tmpreg);
-				bb->code.push_back(storeinst);
+				MachineOperand tmpreg = newPhysReg(isXmm ? RegisterName::xmm0 : RegisterName::rax);
+				emitInst(loadOps[dataSizeType], tmpreg, arg, dataSizeType);
+				emitInst(storeOps[dataSizeType], dst, tmpreg);
 			}
 			else if (needs64BitImm)
 			{
-				MachineOperand tmpreg;
-				tmpreg.type = MachineOperandType::reg;
-				tmpreg.registerIndex = (int)RegisterName::rax;
-
-				auto movinst = context->newMachineInst();
-				movinst->opcode = movOps[dataSizeType];
-				movinst->operands.push_back(tmpreg);
-				pushValueOperand(movinst, arg, dataSizeType);
-				bb->code.push_back(movinst);
-
-				auto storeinst = context->newMachineInst();
-				storeinst->opcode = storeOps[dataSizeType];
-				storeinst->operands.push_back(dst);
-				storeinst->operands.push_back(tmpreg);
-				bb->code.push_back(storeinst);
+				MachineOperand tmpreg = newPhysReg(RegisterName::rax);
+				emitInst(movOps[dataSizeType], tmpreg, arg, dataSizeType);
+				emitInst(storeOps[dataSizeType], dst, tmpreg);
 			}
 			else
 			{
-				auto inst = context->newMachineInst();
-				inst->opcode = storeOps[dataSizeType];
-				inst->operands.push_back(dst);
-				pushValueOperand(inst, arg, dataSizeType);
-				bb->code.push_back(inst);
+				emitInst(storeOps[dataSizeType], dst, arg, dataSizeType);
 			}
 		}
 	}
 
 	// Call the function
+	MachineOperand target;
+	IRFunction* func = dynamic_cast<IRFunction*>(node->func);
+	if (func)
 	{
-		MachineOperand dst;
-
-		IRFunction* func = dynamic_cast<IRFunction*>(node->func);
-		if (func)
-		{
-			dst.type = MachineOperandType::func;
-			dst.func = func;
-		}
-		else
-		{
-			dst.type = MachineOperandType::reg;
-			dst.registerIndex = (int)RegisterName::rax;
-
-			auto inst = context->newMachineInst();
-			inst->opcode = MachineInstOpcode::mov64;
-			inst->operands.push_back(dst);
-			inst->operands.push_back(instRegister[node->func]);
-			bb->code.push_back(inst);
-		}
-
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::call;
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
+		target.type = MachineOperandType::func;
+		target.func = func;
 	}
+	else
+	{
+		target = newPhysReg(RegisterName::rax);
+		emitInst(MachineInstOpcode::mov64, target, instRegister[node->func]);
+	}
+	emitInst(MachineInstOpcode::call, target);
 
 	// Move return value to virtual register
 	if (node->type != context->getVoidTy())
@@ -1202,17 +845,10 @@ void MachineInstSelection::callUnix64(IRInstCall* node)
 		int dataSizeType = getDataSizeType(node->type);
 		bool isXmm = dataSizeType < 2;
 
-		MachineOperand src;
-		src.type = MachineOperandType::reg;
-		src.registerIndex = isXmm ? (int)RegisterName::xmm0 : (int)RegisterName::rax;
-
+		MachineOperand src = newPhysReg(isXmm ? RegisterName::xmm0 : RegisterName::rax);
 		auto dst = newReg(node);
 
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		inst->operands.push_back(src);
-		bb->code.push_back(inst);
+		emitInst(movOps[dataSizeType], dst, src);
 	}
 }
 
@@ -1228,13 +864,7 @@ void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpco
 	if (isConstant(node->operand1))
 	{
 		src1 = newTempReg(dataSizeType < 2 ? MachineRegClass::xmm : MachineRegClass::gp);
-
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(src1);
-		pushValueOperand(inst, node->operand1, dataSizeType);
-
-		bb->code.push_back(inst);
+		emitInst(movOps[dataSizeType], src1, node->operand1, dataSizeType);
 	}
 	else
 	{
@@ -1243,31 +873,13 @@ void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpco
 
 	// Create 32 bit register, cleared to zero (move instruction below only moves 8 bits)
 	auto dst = newReg(node);
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::xor32;
-		inst->operands.push_back(dst);
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
-	}
+	emitInst(MachineInstOpcode::xor32, dst, dst);
 
 	// Perform comparison
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = cmpOps[dataSizeType];
-		inst->operands.push_back(src1);
-		pushValueOperand(inst, node->operand2, dataSizeType);
-
-		bb->code.push_back(inst);
-	}
+	emitInst(cmpOps[dataSizeType], src1, node->operand2, dataSizeType);
 
 	// Move result flag to register
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = opSet;
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
-	}
+	emitInst(opSet, dst);
 }
 
 void MachineInstSelection::simpleBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps)
@@ -1275,26 +887,13 @@ void MachineInstSelection::simpleBinaryInst(IRInstBinary* node, const MachineIns
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 
 	int dataSizeType = getDataSizeType(node->type);
-
 	auto dst = newReg(node);
 
 	// Move operand1 to dest
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand1, dataSizeType);
-		bb->code.push_back(inst);
-	}
+	emitInst(movOps[dataSizeType], dst, node->operand1, dataSizeType);
 
 	// Apply operand2 to dest
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = binaryOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand2, dataSizeType);
-		bb->code.push_back(inst);
-	}
+	emitInst(binaryOps[dataSizeType], dst, node->operand2, dataSizeType);
 }
 
 void MachineInstSelection::shiftBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps)
@@ -1302,47 +901,26 @@ void MachineInstSelection::shiftBinaryInst(IRInstBinary* node, const MachineInst
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 
 	int dataSizeType = getDataSizeType(node->type);
-
 	auto dst = newReg(node);
 
 	if (isConstant(node->operand2))
 	{
 		// Move operand1 to dest
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand1, dataSizeType);
-		bb->code.push_back(inst);
+		emitInst(movOps[dataSizeType], dst, node->operand1, dataSizeType);
 
 		// Apply operand2 to dest
-		inst = context->newMachineInst();
-		inst->opcode = binaryOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand2, dataSizeType);
-		bb->code.push_back(inst);
+		emitInst(binaryOps[dataSizeType], dst, node->operand2, dataSizeType);
 	}
 	else
 	{
 		// Move operand2 to rcx
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(newPhysReg(RegisterName::rcx));
-		pushValueOperand(inst, node->operand2, dataSizeType);
-		bb->code.push_back(inst);
+		emitInst(movOps[dataSizeType], newPhysReg(RegisterName::rcx), node->operand2, dataSizeType);
 
 		// Move operand1 to dest
-		inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand1, dataSizeType);
-		bb->code.push_back(inst);
+		emitInst(movOps[dataSizeType], dst, node->operand1, dataSizeType);
 
 		// Apply rcx to dest
-		inst = context->newMachineInst();
-		inst->opcode = binaryOps[dataSizeType];
-		inst->operands.push_back(dst);
-		inst->operands.push_back(newPhysReg(RegisterName::rcx));
-		bb->code.push_back(inst);
+		emitInst(binaryOps[dataSizeType], dst, newPhysReg(RegisterName::rcx));
 	}
 }
 
@@ -1358,78 +936,120 @@ void MachineInstSelection::divBinaryInst(IRInstBinary* node, const MachineInstOp
 	auto dst = newReg(node);
 
 	// Move operand1 to rdx:rax
+	emitInst(movOps[dataSizeType], newPhysReg(RegisterName::rax), node->operand1, dataSizeType);
+	if (dataSizeType != 5)
 	{
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(newPhysReg(RegisterName::rax));
-		pushValueOperand(inst, node->operand1, dataSizeType);
-		bb->code.push_back(inst);
-
-		if (dataSizeType != 5)
+		if (zeroext)
 		{
-			if (zeroext)
-			{
-				auto inst2 = context->newMachineInst();
-				inst2->opcode = xorOps[dataSizeType];
-				inst2->operands.push_back(newPhysReg(RegisterName::rdx));
-				inst2->operands.push_back(newPhysReg(RegisterName::rdx));
-				bb->code.push_back(inst2);
-			}
-			else
-			{
-				auto inst2 = context->newMachineInst();
-				inst2->opcode = movOps[dataSizeType];
-				inst2->operands.push_back(newPhysReg(RegisterName::rdx));
-				inst2->operands.push_back(newPhysReg(RegisterName::rax));
-				bb->code.push_back(inst2);
-
-				auto inst3 = context->newMachineInst();
-				inst3->opcode = sarOps[dataSizeType];
-				inst3->operands.push_back(newPhysReg(RegisterName::rdx));
-				inst3->operands.push_back(newImm(shiftcount[dataSizeType]));
-				bb->code.push_back(inst3);
-			}
+			emitInst(xorOps[dataSizeType], newPhysReg(RegisterName::rdx), newPhysReg(RegisterName::rdx));
 		}
 		else
 		{
-			auto inst2 = context->newMachineInst();
-			inst2->opcode = zeroext ? MachineInstOpcode::movzx8_16 : MachineInstOpcode::movsx8_16;
-			inst2->operands.push_back(newPhysReg(RegisterName::rax));
-			inst2->operands.push_back(newPhysReg(RegisterName::rax));
-			bb->code.push_back(inst2);
+			emitInst(movOps[dataSizeType], newPhysReg(RegisterName::rdx), newPhysReg(RegisterName::rax));
+			emitInst(sarOps[dataSizeType], newPhysReg(RegisterName::rdx), newImm(shiftcount[dataSizeType]));
 		}
+	}
+	else
+	{
+		emitInst(zeroext ? MachineInstOpcode::movzx8_16 : MachineInstOpcode::movsx8_16, newPhysReg(RegisterName::rax), newPhysReg(RegisterName::rax));
 	}
 
 	// Divide
 	if (isConstant(node->operand2) || isGlobalVariable(node->operand2))
 	{
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		pushValueOperand(inst, node->operand2, dataSizeType);
-		bb->code.push_back(inst);
-
-		inst = context->newMachineInst();
-		inst->opcode = binaryOps[dataSizeType];
-		inst->operands.push_back(dst);
-		bb->code.push_back(inst);
+		emitInst(movOps[dataSizeType], dst, node->operand2, dataSizeType);
+		emitInst(binaryOps[dataSizeType], dst);
 	}
 	else
 	{
-		auto inst = context->newMachineInst();
-		inst->opcode = binaryOps[dataSizeType];
-		pushValueOperand(inst, node->operand2, dataSizeType);
-		bb->code.push_back(inst);
+		emitInst(binaryOps[dataSizeType], node->operand2, dataSizeType);
 	}
 
 	// Move rax to dest
-	{
-		auto inst = context->newMachineInst();
-		inst->opcode = movOps[dataSizeType];
-		inst->operands.push_back(dst);
-		inst->operands.push_back(newPhysReg(remainder ? RegisterName::rdx : RegisterName::rax));
-		bb->code.push_back(inst);
-	}
+	emitInst(movOps[dataSizeType], dst, newPhysReg(remainder ? RegisterName::rdx : RegisterName::rax));
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3)
+{
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	inst->operands.push_back(operand1);
+	inst->operands.push_back(operand2);
+	inst->operands.push_back(operand3);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType, const MachineOperand& operand3)
+{
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	inst->operands.push_back(operand1);
+	pushValueOperand(inst, operand2, dataSizeType);
+	inst->operands.push_back(operand3);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, const MachineOperand& operand2)
+{
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	inst->operands.push_back(operand1);
+	inst->operands.push_back(operand2);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType)
+{
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	inst->operands.push_back(operand1);
+	pushValueOperand(inst, operand2, dataSizeType);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, IRValue* operand1, int dataSizeType, const MachineOperand& operand2)
+{
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	pushValueOperand(inst, operand1, dataSizeType);
+	inst->operands.push_back(operand2);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand)
+{
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	inst->operands.push_back(operand);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, IRValue* operand, int dataSizeType)
+{
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	pushValueOperand(inst, operand, dataSizeType);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, IRBasicBlock* target)
+{
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	pushBBOperand(inst, target);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelection::emitInst(MachineInstOpcode opcode, MachineBasicBlock* target)
+{
+	MachineOperand operand;
+	operand.type = MachineOperandType::basicblock;
+	operand.bb = target;
+
+	auto inst = context->newMachineInst();
+	inst->opcode = opcode;
+	inst->operands.push_back(operand);
+	bb->code.push_back(inst);
 }
 
 void MachineInstSelection::pushValueOperand(MachineInst* inst, IRValue* operand, int dataSizeType)
