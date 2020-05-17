@@ -14,6 +14,8 @@
 
 #ifdef WIN32
 
+#pragma comment(lib, "dbghelp.lib")
+
 NativeSymbolResolver::NativeSymbolResolver()
 {
 	SymInitialize(GetCurrentProcess(), nullptr, TRUE);
