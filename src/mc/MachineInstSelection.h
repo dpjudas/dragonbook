@@ -93,6 +93,8 @@ private:
 	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
 	void shiftBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
 	void divBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps, bool remainder, bool zeroext);
+
+	void addDebugInfo(MachineInst* inst);
 	void pushValueOperand(MachineInst* inst, IRValue* operand, int dataSizeType);
 	void pushBBOperand(MachineInst* inst, IRBasicBlock* bb);
 
@@ -130,4 +132,6 @@ private:
 	std::map<IRBasicBlock*, MachineBasicBlock*> bbMap;
 
 	std::map<IRValue*, MachineOperand> instRegister;
+
+	IRInst* debugInfoInst = nullptr;
 };

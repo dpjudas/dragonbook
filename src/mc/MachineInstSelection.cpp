@@ -74,7 +74,11 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 	{
 		IRBasicBlock* bb = sfunc->basicBlocks[i];
 		selection.bb = selection.bbMap[bb];
-		bb->visit(&selection);
+		for (IRInst* node : bb->code)
+		{
+			selection.debugInfoInst = node;
+			node->visit(&selection);
+		}
 	}
 
 	return selection.mfunc;
@@ -969,9 +973,22 @@ void MachineInstSelection::divBinaryInst(IRInstBinary* node, const MachineInstOp
 	emitInst(movOps[dataSizeType], dst, newPhysReg(remainder ? RegisterName::rdx : RegisterName::rax));
 }
 
+void MachineInstSelection::addDebugInfo(MachineInst* inst)
+{
+	// Transfer debug info to first instruction emitted
+	if (debugInfoInst)
+	{
+		inst->comment = debugInfoInst->comment;
+		inst->fileIndex = debugInfoInst->fileIndex;
+		inst->lineNumber = debugInfoInst->lineNumber;
+		debugInfoInst = nullptr;
+	}
+}
+
 void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3)
 {
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	inst->operands.push_back(operand1);
 	inst->operands.push_back(operand2);
@@ -982,6 +999,7 @@ void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOpera
 void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType, const MachineOperand& operand3)
 {
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	inst->operands.push_back(operand1);
 	pushValueOperand(inst, operand2, dataSizeType);
@@ -992,6 +1010,7 @@ void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOpera
 void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, const MachineOperand& operand2)
 {
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	inst->operands.push_back(operand1);
 	inst->operands.push_back(operand2);
@@ -1001,6 +1020,7 @@ void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOpera
 void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType)
 {
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	inst->operands.push_back(operand1);
 	pushValueOperand(inst, operand2, dataSizeType);
@@ -1010,6 +1030,7 @@ void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOpera
 void MachineInstSelection::emitInst(MachineInstOpcode opcode, IRValue* operand1, int dataSizeType, const MachineOperand& operand2)
 {
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	pushValueOperand(inst, operand1, dataSizeType);
 	inst->operands.push_back(operand2);
@@ -1019,6 +1040,7 @@ void MachineInstSelection::emitInst(MachineInstOpcode opcode, IRValue* operand1,
 void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOperand& operand)
 {
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	inst->operands.push_back(operand);
 	bb->code.push_back(inst);
@@ -1027,6 +1049,7 @@ void MachineInstSelection::emitInst(MachineInstOpcode opcode, const MachineOpera
 void MachineInstSelection::emitInst(MachineInstOpcode opcode, IRValue* operand, int dataSizeType)
 {
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	pushValueOperand(inst, operand, dataSizeType);
 	bb->code.push_back(inst);
@@ -1035,6 +1058,7 @@ void MachineInstSelection::emitInst(MachineInstOpcode opcode, IRValue* operand, 
 void MachineInstSelection::emitInst(MachineInstOpcode opcode, IRBasicBlock* target)
 {
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	pushBBOperand(inst, target);
 	bb->code.push_back(inst);
@@ -1047,6 +1071,7 @@ void MachineInstSelection::emitInst(MachineInstOpcode opcode, MachineBasicBlock*
 	operand.bb = target;
 
 	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
 	inst->opcode = opcode;
 	inst->operands.push_back(operand);
 	bb->code.push_back(inst);

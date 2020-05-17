@@ -152,9 +152,15 @@ void AssemblyWriter::opcode(MachineInst* inst)
 	}
 }
 
-void AssemblyWriter::writeInst(const char* name, MachineInst* inst)
+void AssemblyWriter::writeInst(const char* name, MachineInst* inst, int ptrindex)
 {
-	static const char* regname[] = { "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15" };
+	static const char* regname64[] = { "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15" };
+	static const char* regname32[] = { "eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi", "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15" };
+	static const char* regname16[] = { "ax", "cx", "dx", "bx", "sp", "bp", "si", "di", "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15" };
+	static const char* regname8[] = { "al", "cl", "dl", "bl", "spl", "bpl", "sil", "dil", "r8b", "r9b", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15" };
+	static const char** regname[] = { regname64, regname32, regname16, regname8 };
+
+	OperandSize opsize = OperandSize::int64;
 
 	output << "    " << name;
 
@@ -165,26 +171,53 @@ void AssemblyWriter::writeInst(const char* name, MachineInst* inst)
 			output << " ";
 	}
 
+	std::stringstream opoutput;
+
+	int index = 0;
 	for (const auto& operand : inst->operands)
 	{
-		output << " ";
+		opoutput << (index == 0 ? " " : ", ");
+		if (index == ptrindex) opoutput << "ptr[";
+		bool dsa;
+		int offset;
 		switch (operand.type)
 		{
-		case MachineOperandType::reg: output << (operand.registerIndex < 32 ? regname[operand.registerIndex] : "vreg"); break;
-		case MachineOperandType::constant: output << "constants[" << operand.constantIndex << "]"; break;
-		case MachineOperandType::frameOffset: output << "frame" << (operand.frameOffset >= 0 ? "+" : "") << operand.frameOffset; break;
-		case MachineOperandType::spillOffset: output << "spill" << (operand.spillOffset >= 0 ? "+" : "") << operand.spillOffset; break;
-		case MachineOperandType::stackOffset: output << "rsp" << (operand.stackOffset >= 0 ? "+" : "") << operand.stackOffset; break;
-		case MachineOperandType::imm: output << operand.immvalue; break;
-		case MachineOperandType::basicblock: output << getBasicBlockName(operand.bb); break;
-		case MachineOperandType::func: output << operand.func->name.c_str(); break;
-		case MachineOperandType::global: output << "global"; break;
+		case MachineOperandType::reg: opoutput << (operand.registerIndex < 32 ? regname[(int)opsize][operand.registerIndex] : "vreg"); break;
+		case MachineOperandType::constant: opoutput << "constants[" << operand.constantIndex << "]"; break;
+		case MachineOperandType::frameOffset:
+			dsa = sfunc->dynamicStackAllocations;
+			offset = sfunc->frameBaseOffset + operand.frameOffset;
+			opoutput << (dsa ? "rbp" : "rsp") << (offset >= 0 ? "+" : "") << std::hex << offset << std::dec << "h";
+			break;
+		case MachineOperandType::spillOffset:
+			dsa = sfunc->dynamicStackAllocations;
+			offset = sfunc->spillBaseOffset + operand.spillOffset;
+			opoutput << (dsa ? "rbp" : "rsp") << (offset >= 0 ? "+" : "") << std::hex << offset << std::dec << "h";
+			break;
+		case MachineOperandType::stackOffset:
+			offset = operand.stackOffset;
+			opoutput << "rsp" << (offset >= 0 ? "+" : "") << std::hex << offset << std::dec << "h";
+			break;
+		case MachineOperandType::imm: opoutput << std::hex << operand.immvalue << std::dec << "h"; break;
+		case MachineOperandType::basicblock: opoutput << getBasicBlockName(operand.bb); break;
+		case MachineOperandType::func: opoutput << operand.func->name.c_str(); break;
+		case MachineOperandType::global: opoutput << "global"; break;
 		}
+
+		if (index == ptrindex) opoutput << "]";
+		index++;
 	}
+
+	std::string optext = opoutput.str();
+	output << optext.c_str();
 
 	if (!inst->comment.empty())
 	{
-		output << " ; ";
+		size_t count = optext.length();
+		for (size_t i = 16 + count; i < 48; i++)
+			output << " ";
+
+		output << "; ";
 		output << inst->comment.c_str();
 	}
 
@@ -213,62 +246,62 @@ void AssemblyWriter::lea(MachineInst* inst)
 
 void AssemblyWriter::loadss(MachineInst* inst)
 {
-	writeInst("loadss", inst);
+	writeInst("loadss", inst, 1);
 }
 
 void AssemblyWriter::loadsd(MachineInst* inst)
 {
-	writeInst("loadsd", inst);
+	writeInst("loadsd", inst, 1);
 }
 
 void AssemblyWriter::load64(MachineInst* inst)
 {
-	writeInst("load64", inst);
+	writeInst("load64", inst, 1);
 }
 
 void AssemblyWriter::load32(MachineInst* inst)
 {
-	writeInst("load32", inst);
+	writeInst("load32", inst, 1);
 }
 
 void AssemblyWriter::load16(MachineInst* inst)
 {
-	writeInst("load16", inst);
+	writeInst("load16", inst, 1);
 }
 
 void AssemblyWriter::load8(MachineInst* inst)
 {
-	writeInst("load8", inst);
+	writeInst("load8", inst, 1);
 }
 
 void AssemblyWriter::storess(MachineInst* inst)
 {
-	writeInst("storess", inst);
+	writeInst("storess", inst, 0);
 }
 
 void AssemblyWriter::storesd(MachineInst* inst)
 {
-	writeInst("storesd", inst);
+	writeInst("storesd", inst, 0);
 }
 
 void AssemblyWriter::store64(MachineInst* inst)
 {
-	writeInst("store64", inst);
+	writeInst("store64", inst, 0);
 }
 
 void AssemblyWriter::store32(MachineInst* inst)
 {
-	writeInst("store32", inst);
+	writeInst("store32", inst, 0);
 }
 
 void AssemblyWriter::store16(MachineInst* inst)
 {
-	writeInst("store16", inst);
+	writeInst("store16", inst, 0);
 }
 
 void AssemblyWriter::store8(MachineInst* inst)
 {
-	writeInst("store8", inst);
+	writeInst("store8", inst, 0);
 }
 
 void AssemblyWriter::movss(MachineInst* inst)

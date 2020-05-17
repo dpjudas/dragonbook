@@ -150,7 +150,8 @@ private:
 	bool isFunction(IRType* type) const { return dynamic_cast<IRFunctionType*>(type); }
 	bool isStruct(IRType* type) const { return dynamic_cast<IRStructType*>(type); }
 
-	void writeInst(const char* name, MachineInst* inst);
+	enum class OperandSize { int64, int32, int16, int8 };
+	void writeInst(const char* name, MachineInst* inst, int ptrindex = -1);
 
 	const char* getBasicBlockName(MachineBasicBlock* bb);
 

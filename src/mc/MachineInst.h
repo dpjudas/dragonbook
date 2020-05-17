@@ -79,6 +79,8 @@ public:
 	MachineUnwindHint unwindHint = MachineUnwindHint::None;
 
 	std::string comment;
+	int fileIndex = -1;
+	int lineNumber = -1;
 };
 
 class MachineBasicBlock
