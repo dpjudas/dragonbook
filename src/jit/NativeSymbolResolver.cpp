@@ -67,7 +67,7 @@ NativeSymbolResolver::~NativeSymbolResolver()
 {
 }
 
-JITStackFrame GetName(void* frame)
+JITStackFrame NativeSymbolResolver::GetName(void* frame)
 {
 	JITStackFrame s;
 	char** strings;

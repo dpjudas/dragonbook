@@ -21,6 +21,6 @@ if (MSVC)
 	set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}") # Use all cores for compilation
 endif()
 
-add_executable(test ${TEST_SOURCES})
+add_executable(dragontest ${TEST_SOURCES})
 
-target_link_libraries(test ${TEST_LIBS})
+target_link_libraries(dragontest ${TEST_LIBS})

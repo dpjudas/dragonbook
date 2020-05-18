@@ -63,6 +63,154 @@ void inttest()
 	std::cout << "main returned: " << r << std::endl;
 }
 
+class InstructionTest
+{
+public:
+	InstructionTest(std::string name, std::function<void(IRContext*)> createCallback, std::function<bool(JITRuntime*)> runCallback) : name(name), createCallback(createCallback), runCallback(runCallback) { }
+
+	void CreateFunc(IRContext* context) { createCallback(context);}
+	bool RunTest(JITRuntime* runtime) { return runCallback(runtime); }
+	
+	std::string name;
+	
+private:
+	std::function<void(IRContext*)> createCallback;
+	std::function<bool(JITRuntime*)> runCallback;
+};
+
+class InstructionTester
+{
+public:
+	void Test(std::string name, std::function<void(IRContext*)> createCallback, std::function<bool(JITRuntime*)> runCallback)
+	{
+		std::unique_ptr<InstructionTest> t(new InstructionTest(name, createCallback, runCallback));
+		tests.push_back(std::move(t));
+	}
+	
+	template<typename T>
+	void Binary(std::string name, std::function<IRValue*(IRBuilder*, IRValue*, IRValue*)> codegen, T a, T b, T result)
+	{
+		auto create = [=](IRContext* context)
+		{
+			IRType* type = GetIRType<T>(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(type, { type, type }), name);
+			
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+			builder.CreateRet(codegen(&builder, func->args[0], func->args[1]));
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<T(*)(T,T)>(jit->getPointerToFunction(name));
+			return ptr(a, b) == result;
+		};
+		
+		Test(name, create, run);
+	}
+	
+	void Run()
+	{
+		IRContext context;
+		for (auto& test : tests)
+		{
+			test->CreateFunc(&context);
+		}
+		
+		JITRuntime jit;
+		jit.add(&context);
+		
+		for (auto& test : tests)
+		{
+			std::cout << "Testing " << test->name.c_str() << "...";
+			std::cout.flush();
+			bool result = test->RunTest(&jit);
+			std::cout << (result ? " OK" : " FAILED") << std::endl;
+		}
+	}
+
+private:
+	template<typename T> IRType* GetIRType(IRContext* ircontext) { return ircontext->getInt8PtrTy(); }
+	template<> IRType* GetIRType<void>(IRContext* ircontext) { return ircontext->getVoidTy(); }
+	template<> IRType* GetIRType<char>(IRContext* ircontext) { return ircontext->getInt8Ty(); }
+	template<> IRType* GetIRType<unsigned char>(IRContext* ircontext) { return ircontext->getInt8Ty(); }
+	template<> IRType* GetIRType<short>(IRContext* ircontext) { return ircontext->getInt16Ty(); }
+	template<> IRType* GetIRType<unsigned short>(IRContext* ircontext) { return ircontext->getInt16Ty(); }
+	template<> IRType* GetIRType<int>(IRContext* ircontext) { return ircontext->getInt32Ty(); }
+	template<> IRType* GetIRType<unsigned int>(IRContext* ircontext) { return ircontext->getInt32Ty(); }
+	template<> IRType* GetIRType<long long>(IRContext* ircontext) { return ircontext->getInt64Ty(); }
+	template<> IRType* GetIRType<unsigned long long>(IRContext* ircontext) { return ircontext->getInt64Ty(); }
+	template<> IRType* GetIRType<float>(IRContext* ircontext) { return ircontext->getFloatTy(); }
+	template<> IRType* GetIRType<double>(IRContext* ircontext) { return ircontext->getDoubleTy(); }
+	
+	std::vector<std::unique_ptr<InstructionTest>> tests;
+};
+
+void insttest()
+{
+	InstructionTester tester;
+
+	tester.Binary<int8_t>("add_int8", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, 5, 10, 5 + 10);
+	tester.Binary<int8_t>("sub_int8", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, 5, 10, 5 - 10);
+	tester.Binary<int8_t>("mul_int8", [](auto cc, auto a, auto b) { return cc->CreateMul(a, b); }, 5, 10, 5 * 10);
+	tester.Binary<int8_t>("sdiv_int8", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, -50, 10, (-50) / 10);
+	tester.Binary<int8_t>("udiv_int8", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, 50, 10, 50 / 10);
+	tester.Binary<int8_t>("srem_int8", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, -50, 3, (-50) % 3);
+	tester.Binary<int8_t>("urem_int8", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, 50, 3, 50 % 3);
+	tester.Binary<int8_t>("and_int8", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, 50, 10, 50 & 10);
+	tester.Binary<int8_t>("or_int8", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, 50, 10, 50 | 10);
+	tester.Binary<int8_t>("xor_int8", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, 50, 10, 50 ^ 10);
+	tester.Binary<int8_t>("shl_int8", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, 5, 2, 5 << 2);
+	tester.Binary<int8_t>("lshr_int8", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, -50, 2, static_cast<uint8_t>(-50) >> 2);
+	tester.Binary<int8_t>("ashr_int8", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, -50, 2, (-50) >> 2);
+	tester.Binary<int16_t>("add_int16", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, 5, 10, 5 + 10);
+	tester.Binary<int16_t>("sub_int16", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, 5, 10, 5 - 10);
+	tester.Binary<int16_t>("sdiv_int16", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, -50, 10, (-50) / 10);
+	tester.Binary<int16_t>("udiv_int16", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, 50, 10, 50 / 10);
+	tester.Binary<int16_t>("srem_int16", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, -50, 3, (-50) % 3);
+	tester.Binary<int16_t>("urem_int16", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, 50, 3, 50 % 3);
+	tester.Binary<int16_t>("and_int16", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, 50, 10, 50 & 10);
+	tester.Binary<int16_t>("or_int16", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, 50, 10, 50 | 10);
+	tester.Binary<int16_t>("xor_int16", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, 50, 10, 50 ^ 10);
+	tester.Binary<int16_t>("shl_int16", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, 5, 2, 5 << 2);
+	tester.Binary<int16_t>("lshr_int16", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, -50, 2, static_cast<uint16_t>(-50) >> 2);
+	tester.Binary<int16_t>("ashr_int16", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, -50, 2, (-50) >> 2);
+	tester.Binary<int32_t>("add_int32", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, 5, 10, 5 + 10);
+	tester.Binary<int32_t>("sub_int32", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, 5, 10, 5 - 10);
+	tester.Binary<int32_t>("sdiv_int32", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, -50, 10, (-50) / 10);
+	tester.Binary<int32_t>("udiv_int32", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, 50, 10, 50 / 10);
+	tester.Binary<int32_t>("srem_int32", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, -50, 3, (-50) % 3);
+	tester.Binary<int32_t>("urem_int32", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, 50, 3, 50 % 3);
+	tester.Binary<int32_t>("and_int32", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, 50, 10, 50 & 10);
+	tester.Binary<int32_t>("or_int32", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, 50, 10, 50 | 10);
+	tester.Binary<int32_t>("xor_int32", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, 50, 10, 50 ^ 10);
+	tester.Binary<int32_t>("shl_int32", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, 5, 2, 5 << 2);
+	tester.Binary<int32_t>("lshr_int32", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, -50, 2, static_cast<uint32_t>(-50) >> 2);
+	tester.Binary<int32_t>("ashr_int32", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, -50, 2, (-50) >> 2);
+	tester.Binary<int64_t>("add_int64", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, 5, 10, 5 + 10);
+	tester.Binary<int64_t>("sub_int64", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, 5, 10, 5 - 10);
+	tester.Binary<int64_t>("sdiv_int64", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, -50, 10, (-50) / 10);
+	tester.Binary<int64_t>("udiv_int64", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, 50, 10, 50 / 10);
+	tester.Binary<int64_t>("srem_int64", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, -50, 3, (-50) % 3);
+	tester.Binary<int64_t>("urem_int64", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, 50, 3, 50 % 3);
+	tester.Binary<int64_t>("and_int64", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, 50, 10, 50 & 10);
+	tester.Binary<int64_t>("or_int64", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, 50, 10, 50 | 10);
+	tester.Binary<int64_t>("xor_int64", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, 50, 10, 50 ^ 10);
+	tester.Binary<int64_t>("shl_int64", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, 5, 2, 5 << 2);
+	tester.Binary<int64_t>("lshr_int64", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, -50, 2, static_cast<uint64_t>(-50) >> 2);
+	tester.Binary<int64_t>("ashr_int64", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, -50, 2, (-50) >> 2);
+	tester.Binary<float>("fadd_float", [](auto cc, auto a, auto b) { return cc->CreateFAdd(a, b); }, 5.0f, 10.0f, 5.0f + 10.0f);
+	tester.Binary<float>("fsub_float", [](auto cc, auto a, auto b) { return cc->CreateFSub(a, b); }, 5.0f, 10.0f, 5.0f - 10.0f);
+	tester.Binary<float>("fmul_float", [](auto cc, auto a, auto b) { return cc->CreateFMul(a, b); }, 5.0f, 10.0f, 5.0f * 10.0f);
+	tester.Binary<float>("fdiv_float", [](auto cc, auto a, auto b) { return cc->CreateFDiv(a, b); }, 50.0f, 10.0f, 55.0f / 10.0f);
+	tester.Binary<double>("fadd_double", [](auto cc, auto a, auto b) { return cc->CreateFAdd(a, b); }, 5.0, 10.0, 5.0 + 10.0);
+	tester.Binary<double>("fsub_double", [](auto cc, auto a, auto b) { return cc->CreateFSub(a, b); }, 5.0, 10.0, 5.0 - 10.0);
+	tester.Binary<double>("fmul_double", [](auto cc, auto a, auto b) { return cc->CreateFMul(a, b); }, 5.0, 10.0, 5.0 * 10.0);
+	tester.Binary<double>("fdiv_double", [](auto cc, auto a, auto b) { return cc->CreateFDiv(a, b); }, 50.0, 10.0, 55.0 / 10.0);
+
+	tester.Run();
+}
+
 void sexttest()
 {
 	IRContext context;
@@ -127,7 +275,8 @@ int main(int argc, char** argv)
 	{
 		//floattest();
 		//inttest();
-		sexttest();
+		//sexttest();
+		insttest();
 
 		return 0;
 	}
