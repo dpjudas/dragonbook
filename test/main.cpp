@@ -3,65 +3,7 @@
 #include "jit/JITRuntime.h"
 #include <iostream>
 #include <exception>
-
-void floattest()
-{
-	IRContext context;
-
-	IRFunctionType* functype = context.getFunctionType(
-		context.getFloatTy(),
-		{
-			context.getFloatTy(),
-			context.getFloatTy(),
-			context.getFloatTy(),
-			context.getFloatTy(),
-			context.getFloatTy(),
-			context.getFloatTy()
-		});
-
-	IRFunctionType* functype2 = context.getFunctionType(context.getFloatTy(), {});
-
-	IRFunction* func = context.createFunction(functype, "main");
-	IRFunction* func2 = context.createFunction(functype2, "func2");
-
-	IRBuilder builder;
-
-	builder.SetInsertPoint(func->createBasicBlock("entry"));
-	builder.CreateRet(builder.CreateFAdd(builder.CreateFAdd(func->args[0], func->args[4]), builder.CreateCall(func2, {})));
-
-	builder.SetInsertPoint(func2->createBasicBlock("entry"));
-	builder.CreateRet(context.getConstantFloat(context.getFloatTy(), 42.0f));
-
-	JITRuntime jit;
-	jit.add(&context);
-
-	std::cout << context.getFunctionAssembly(func) << std::endl;
-
-	float (*mainptr)(float, float, float, float, float, float) = reinterpret_cast<float(*)(float, float, float, float, float, float)>(jit.getPointerToFunction(func->name));
-	float r = mainptr(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f);
-	std::cout << "main returned: " << r << std::endl;
-}
-
-void inttest()
-{
-	IRContext context;
-	IRFunctionType* functype = context.getFunctionType(context.getInt32Ty(), { context.getInt32Ty(), context.getInt32Ty() });
-	IRFunction* func = context.createFunction(functype, "main");
-
-	IRBuilder builder;
-	builder.SetInsertPoint(func->createBasicBlock("entry"));
-	builder.CreateRet(builder.CreateUDiv(func->args[0], func->args[1]));
-
-	JITRuntime jit;
-	jit.add(&context);
-
-	std::cout << context.getFunctionAssembly(func) << std::endl;
-
-	int (*mainptr)(int, int) = reinterpret_cast<int(*)(int, int)>(jit.getPointerToFunction(func->name));
-	int r = mainptr(-32, 2);
-	std::cout << "should return: " << (((uint32_t)(int32_t)-32) / 2) << std::endl;
-	std::cout << "main returned: " << r << std::endl;
-}
+#include <functional>
 
 class InstructionTest
 {
@@ -86,9 +28,64 @@ public:
 		std::unique_ptr<InstructionTest> t(new InstructionTest(name, createCallback, runCallback));
 		tests.push_back(std::move(t));
 	}
-	
+
+	template<typename RetT, typename ArgT>
+	void Convert(std::string name, std::function<IRValue* (IRBuilder*, IRValue*, IRType*)> codegen, std::function<RetT(ArgT)> cppversion)
+	{
+		auto create = [=](IRContext* context)
+		{
+			IRType* rettype = GetIRType<RetT>(context);
+			IRType* type = GetIRType<ArgT>(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(rettype, { type }), name);
+
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+			builder.CreateRet(codegen(&builder, func->args[0], rettype));
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<RetT(*)(ArgT)>(jit->getPointerToFunction(name));
+			for (int i = 0; i < 10; i++)
+			{
+				auto a = RandomValue<ArgT>();
+				if ((ptr(a) != cppversion(a))) return false;
+			}
+			return true;
+		};
+
+		Test(name, create, run);
+	}
+
 	template<typename T>
-	void Binary(std::string name, std::function<IRValue*(IRBuilder*, IRValue*, IRValue*)> codegen, T a, T b, T result)
+	void Unary(std::string name, std::function<IRValue* (IRBuilder*, IRValue*)> codegen, std::function<T(T)> cppversion)
+	{
+		auto create = [=](IRContext* context)
+		{
+			IRType* type = GetIRType<T>(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(type, { type, }), name);
+
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+			builder.CreateRet(codegen(&builder, func->args[0]));
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<T(*)(T)>(jit->getPointerToFunction(name));
+			for (int i = 0; i < 10; i++)
+			{
+				auto a = RandomValue<T>();
+				if ((ptr(a) != cppversion(a))) return false;
+			}
+			return true;
+		};
+
+		Test(name, create, run);
+	}
+
+	template<typename T>
+	void Binary(std::string name, std::function<IRValue*(IRBuilder*, IRValue*, IRValue*)> codegen, std::function<T(T, T)> cppversion)
 	{
 		auto create = [=](IRContext* context)
 		{
@@ -102,8 +99,15 @@ public:
 
 		auto run = [=](JITRuntime* jit)
 		{
-			auto ptr = reinterpret_cast<T(*)(T,T)>(jit->getPointerToFunction(name));
-			return ptr(a, b) == result;
+			auto ptr = reinterpret_cast<T(*)(T, T)>(jit->getPointerToFunction(name));
+			for (int i = 0; i < 10; i++)
+			{
+				auto a = RandomValue<T>();
+				auto b = RandomValue<T>();
+				if (b == T()) b++; // to avoid division by zero
+				if ((ptr(a, b) != cppversion(a, b))) return false;
+			}
+			return true;
 		};
 		
 		Test(name, create, run);
@@ -111,6 +115,8 @@ public:
 	
 	void Run()
 	{
+		std::cout << "Creating tests" << std::endl;
+
 		IRContext context;
 		for (auto& test : tests)
 		{
@@ -119,14 +125,19 @@ public:
 		
 		JITRuntime jit;
 		jit.add(&context);
-		
+
+		std::cout << "Running tests" << std::endl;
+
 		for (auto& test : tests)
 		{
-			std::cout << "Testing " << test->name.c_str() << "...";
-			std::cout.flush();
 			bool result = test->RunTest(&jit);
-			std::cout << (result ? " OK" : " FAILED") << std::endl;
+			if (!result)
+			{
+				std::cout << test->name.c_str() << " failed" << std::endl;
+			}
 		}
+
+		std::cout << "All tests done" << std::endl;
 	}
 
 private:
@@ -142,141 +153,133 @@ private:
 	template<> IRType* GetIRType<unsigned long long>(IRContext* ircontext) { return ircontext->getInt64Ty(); }
 	template<> IRType* GetIRType<float>(IRContext* ircontext) { return ircontext->getFloatTy(); }
 	template<> IRType* GetIRType<double>(IRContext* ircontext) { return ircontext->getDoubleTy(); }
-	
+
+	template<typename T> T RandomValue() { return (T)rand(); }
+	template<> int32_t RandomValue<int32_t>() { return ((int32_t)rand()) << 16; }
+	template<> int64_t RandomValue<int64_t>() { return ((int64_t)rand()) << 32; }
+	template<> float RandomValue<float>() { return (float)rand(); }
+	template<> double RandomValue<double>() { return (double)rand(); }
+
 	std::vector<std::unique_ptr<InstructionTest>> tests;
 };
-
-void insttest()
-{
-	InstructionTester tester;
-
-	tester.Binary<int8_t>("add_int8", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, 5, 10, 5 + 10);
-	tester.Binary<int8_t>("sub_int8", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, 5, 10, 5 - 10);
-	tester.Binary<int8_t>("mul_int8", [](auto cc, auto a, auto b) { return cc->CreateMul(a, b); }, 5, 10, 5 * 10);
-	tester.Binary<int8_t>("sdiv_int8", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, -50, 10, (-50) / 10);
-	tester.Binary<int8_t>("udiv_int8", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, 50, 10, 50 / 10);
-	tester.Binary<int8_t>("srem_int8", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, -50, 3, (-50) % 3);
-	tester.Binary<int8_t>("urem_int8", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, 50, 3, 50 % 3);
-	tester.Binary<int8_t>("and_int8", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, 50, 10, 50 & 10);
-	tester.Binary<int8_t>("or_int8", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, 50, 10, 50 | 10);
-	tester.Binary<int8_t>("xor_int8", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, 50, 10, 50 ^ 10);
-	tester.Binary<int8_t>("shl_int8", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, 5, 2, 5 << 2);
-	tester.Binary<int8_t>("lshr_int8", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, -50, 2, static_cast<uint8_t>(-50) >> 2);
-	tester.Binary<int8_t>("ashr_int8", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, -50, 2, (-50) >> 2);
-	tester.Binary<int16_t>("add_int16", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, 5, 10, 5 + 10);
-	tester.Binary<int16_t>("sub_int16", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, 5, 10, 5 - 10);
-	tester.Binary<int16_t>("sdiv_int16", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, -50, 10, (-50) / 10);
-	tester.Binary<int16_t>("udiv_int16", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, 50, 10, 50 / 10);
-	tester.Binary<int16_t>("srem_int16", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, -50, 3, (-50) % 3);
-	tester.Binary<int16_t>("urem_int16", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, 50, 3, 50 % 3);
-	tester.Binary<int16_t>("and_int16", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, 50, 10, 50 & 10);
-	tester.Binary<int16_t>("or_int16", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, 50, 10, 50 | 10);
-	tester.Binary<int16_t>("xor_int16", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, 50, 10, 50 ^ 10);
-	tester.Binary<int16_t>("shl_int16", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, 5, 2, 5 << 2);
-	tester.Binary<int16_t>("lshr_int16", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, -50, 2, static_cast<uint16_t>(-50) >> 2);
-	tester.Binary<int16_t>("ashr_int16", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, -50, 2, (-50) >> 2);
-	tester.Binary<int32_t>("add_int32", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, 5, 10, 5 + 10);
-	tester.Binary<int32_t>("sub_int32", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, 5, 10, 5 - 10);
-	tester.Binary<int32_t>("sdiv_int32", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, -50, 10, (-50) / 10);
-	tester.Binary<int32_t>("udiv_int32", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, 50, 10, 50 / 10);
-	tester.Binary<int32_t>("srem_int32", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, -50, 3, (-50) % 3);
-	tester.Binary<int32_t>("urem_int32", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, 50, 3, 50 % 3);
-	tester.Binary<int32_t>("and_int32", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, 50, 10, 50 & 10);
-	tester.Binary<int32_t>("or_int32", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, 50, 10, 50 | 10);
-	tester.Binary<int32_t>("xor_int32", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, 50, 10, 50 ^ 10);
-	tester.Binary<int32_t>("shl_int32", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, 5, 2, 5 << 2);
-	tester.Binary<int32_t>("lshr_int32", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, -50, 2, static_cast<uint32_t>(-50) >> 2);
-	tester.Binary<int32_t>("ashr_int32", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, -50, 2, (-50) >> 2);
-	tester.Binary<int64_t>("add_int64", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, 5, 10, 5 + 10);
-	tester.Binary<int64_t>("sub_int64", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, 5, 10, 5 - 10);
-	tester.Binary<int64_t>("sdiv_int64", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, -50, 10, (-50) / 10);
-	tester.Binary<int64_t>("udiv_int64", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, 50, 10, 50 / 10);
-	tester.Binary<int64_t>("srem_int64", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, -50, 3, (-50) % 3);
-	tester.Binary<int64_t>("urem_int64", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, 50, 3, 50 % 3);
-	tester.Binary<int64_t>("and_int64", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, 50, 10, 50 & 10);
-	tester.Binary<int64_t>("or_int64", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, 50, 10, 50 | 10);
-	tester.Binary<int64_t>("xor_int64", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, 50, 10, 50 ^ 10);
-	tester.Binary<int64_t>("shl_int64", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, 5, 2, 5 << 2);
-	tester.Binary<int64_t>("lshr_int64", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, -50, 2, static_cast<uint64_t>(-50) >> 2);
-	tester.Binary<int64_t>("ashr_int64", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, -50, 2, (-50) >> 2);
-	tester.Binary<float>("fadd_float", [](auto cc, auto a, auto b) { return cc->CreateFAdd(a, b); }, 5.0f, 10.0f, 5.0f + 10.0f);
-	tester.Binary<float>("fsub_float", [](auto cc, auto a, auto b) { return cc->CreateFSub(a, b); }, 5.0f, 10.0f, 5.0f - 10.0f);
-	tester.Binary<float>("fmul_float", [](auto cc, auto a, auto b) { return cc->CreateFMul(a, b); }, 5.0f, 10.0f, 5.0f * 10.0f);
-	tester.Binary<float>("fdiv_float", [](auto cc, auto a, auto b) { return cc->CreateFDiv(a, b); }, 50.0f, 10.0f, 55.0f / 10.0f);
-	tester.Binary<double>("fadd_double", [](auto cc, auto a, auto b) { return cc->CreateFAdd(a, b); }, 5.0, 10.0, 5.0 + 10.0);
-	tester.Binary<double>("fsub_double", [](auto cc, auto a, auto b) { return cc->CreateFSub(a, b); }, 5.0, 10.0, 5.0 - 10.0);
-	tester.Binary<double>("fmul_double", [](auto cc, auto a, auto b) { return cc->CreateFMul(a, b); }, 5.0, 10.0, 5.0 * 10.0);
-	tester.Binary<double>("fdiv_double", [](auto cc, auto a, auto b) { return cc->CreateFDiv(a, b); }, 50.0, 10.0, 55.0 / 10.0);
-
-	tester.Run();
-}
-
-void sexttest()
-{
-	IRContext context;
-	IRType* int64Ty = context.getInt64Ty();
-	IRType* int32Ty = context.getInt32Ty();
-	IRType* int16Ty = context.getInt16Ty();
-	IRType* int8Ty = context.getInt8Ty();
-
-	std::vector<IRFunction*> funcs;
-	funcs.push_back(context.createFunction(context.getFunctionType(int64Ty, { int8Ty }), "int8_to_64"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int32Ty, { int8Ty }), "int8_to_32"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int16Ty, { int8Ty }), "int8_to_16"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int8Ty, { int8Ty }), "int8_to_8"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int64Ty, { int16Ty }), "int16_to_64"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int32Ty, { int16Ty }), "int16_to_32"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int16Ty, { int16Ty }), "int16_to_16"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int64Ty, { int32Ty }), "int32_to_64"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int32Ty, { int32Ty }), "int32_to_32"));
-	funcs.push_back(context.createFunction(context.getFunctionType(int64Ty, { int64Ty }), "int64_to_64"));
-
-	for (IRFunction* func : funcs)
-	{
-		IRBuilder builder;
-		builder.SetInsertPoint(func->createBasicBlock("entry"));
-		builder.CreateRet(builder.CreateSExt(func->args[0], static_cast<IRFunctionType*>(func->type)->returnType));
-	}
-
-	JITRuntime jit;
-	jit.add(&context);
-
-	int64_t(*int8_to_64)(int8_t) = reinterpret_cast<int64_t(*)(int8_t)>(jit.getPointerToFunction("int8_to_64"));
-	int32_t(*int8_to_32)(int8_t) = reinterpret_cast<int32_t(*)(int8_t)>(jit.getPointerToFunction("int8_to_32"));
-	int16_t(*int8_to_16)(int8_t) = reinterpret_cast<int16_t(*)(int8_t)>(jit.getPointerToFunction("int8_to_16"));
-	int8_t(*int8_to_8)(int8_t) = reinterpret_cast<int8_t(*)(int8_t)>(jit.getPointerToFunction("int8_to_8"));
-	int64_t(*int16_to_64)(int16_t) = reinterpret_cast<int64_t(*)(int16_t)>(jit.getPointerToFunction("int16_to_64"));
-	int32_t(*int16_to_32)(int16_t) = reinterpret_cast<int32_t(*)(int16_t)>(jit.getPointerToFunction("int16_to_32"));
-	int16_t(*int16_to_16)(int16_t) = reinterpret_cast<int16_t(*)(int16_t)>(jit.getPointerToFunction("int16_to_16"));
-	int64_t(*int32_to_64)(int32_t) = reinterpret_cast<int64_t(*)(int32_t)>(jit.getPointerToFunction("int32_to_64"));
-	int32_t(*int32_to_32)(int32_t) = reinterpret_cast<int32_t(*)(int32_t)>(jit.getPointerToFunction("int32_to_32"));
-	int64_t(*int64_to_64)(int64_t) = reinterpret_cast<int64_t(*)(int64_t)>(jit.getPointerToFunction("int64_to_64"));
-
-	int8_to_32(-100);
-
-	std::cout << int8_to_64(-100) << ", " << int8_to_64(100) << std::endl;
-	std::cout << int8_to_32(-100) << ", " << int8_to_32(100) << std::endl;
-	std::cout << int8_to_16(-100) << ", " << int8_to_16(100) << std::endl;
-	std::cout << (int)int8_to_8(-100) << ", " << (int)int8_to_8(100) << std::endl;
-	std::cout << std::endl;
-	std::cout << int16_to_64(-2000) << ", " << int16_to_64(2000) << std::endl;
-	std::cout << int16_to_32(-2000) << ", " << int16_to_32(2000) << std::endl;
-	std::cout << int16_to_16(-2000) << ", " << int16_to_16(2000) << std::endl;
-	std::cout << std::endl;
-	std::cout << int32_to_64(-200000) << ", " << int32_to_64(200000) << std::endl;
-	std::cout << int32_to_32(-200000) << ", " << int32_to_32(200000) << std::endl;
-	std::cout << std::endl;
-	std::cout << int64_to_64(-234567) << ", " << int64_to_64(234567) << std::endl;
-}
 
 int main(int argc, char** argv)
 {
 	try
 	{
-		//floattest();
-		//inttest();
-		//sexttest();
-		insttest();
+		InstructionTester tester;
+
+		tester.Unary<int8_t>("not_int8", [](auto cc, auto a) { return cc->CreateNot(a); }, [](int8_t a) { return ~a; });
+		tester.Unary<int8_t>("neg_int8", [](auto cc, auto a) { return cc->CreateNeg(a); }, [](int8_t a) { return -a; });
+		tester.Unary<int16_t>("not_int16", [](auto cc, auto a) { return cc->CreateNot(a); }, [](int16_t a) { return ~a; });
+		tester.Unary<int16_t>("neg_int16", [](auto cc, auto a) { return cc->CreateNeg(a); }, [](int16_t a) { return -a; });
+		tester.Unary<int32_t>("not_int32", [](auto cc, auto a) { return cc->CreateNot(a); }, [](int32_t a) { return ~a; });
+		tester.Unary<int32_t>("neg_int32", [](auto cc, auto a) { return cc->CreateNeg(a); }, [](int32_t a) { return -a; });
+		tester.Unary<int64_t>("not_int64", [](auto cc, auto a) { return cc->CreateNot(a); }, [](int64_t a) { return ~a; });
+		tester.Unary<int64_t>("neg_int64", [](auto cc, auto a) { return cc->CreateNeg(a); }, [](int64_t a) { return -a; });
+		tester.Unary<float>("fneg_float", [](auto cc, auto a) { return cc->CreateFNeg(a); }, [](float a) { return -a; });
+		tester.Unary<double>("fneg_double", [](auto cc, auto a) { return cc->CreateFNeg(a); }, [](double a) { return -a; });
+
+		tester.Binary<int8_t>("add_int8", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, [](int8_t a, int8_t b) { return a + b; });
+		tester.Binary<int8_t>("sub_int8", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, [](int8_t a, int8_t b) { return a - b; });
+		tester.Binary<int8_t>("mul_int8", [](auto cc, auto a, auto b) { return cc->CreateMul(a, b); }, [](int8_t a, int8_t b) { return a * b; });
+		tester.Binary<int8_t>("sdiv_int8", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, [](int8_t a, int8_t b) { return a / b; });
+		tester.Binary<int8_t>("udiv_int8", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, [](int8_t a, int8_t b) { return ((uint8_t)a) / (uint8_t)b; });
+		tester.Binary<int8_t>("srem_int8", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, [](int8_t a, int8_t b) { return a % b; });
+		tester.Binary<int8_t>("urem_int8", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, [](int8_t a, int8_t b) { return ((uint8_t)a) % (uint8_t)b; });
+		tester.Binary<int8_t>("and_int8", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, [](int8_t a, int8_t b) { return a & b; });
+		tester.Binary<int8_t>("or_int8", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, [](int8_t a, int8_t b) { return a | b; });
+		tester.Binary<int8_t>("xor_int8", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, [](int8_t a, int8_t b) { return a ^ b; });
+		tester.Binary<int8_t>("shl_int8", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, [](int8_t a, int8_t b) { return a << b; });
+		tester.Binary<int8_t>("lshr_int8", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, [](int8_t a, int8_t b) { return ((uint8_t)a) >> (uint8_t)b; });
+		tester.Binary<int8_t>("ashr_int8", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, [](int8_t a, int8_t b) { return a >> b; });
+
+		tester.Binary<int16_t>("add_int16", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, [](int16_t a, int16_t b) { return a + b; });
+		tester.Binary<int16_t>("sub_int16", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, [](int16_t a, int16_t b) { return a - b; });
+		tester.Binary<int16_t>("mul_int16", [](auto cc, auto a, auto b) { return cc->CreateMul(a, b); }, [](int16_t a, int16_t b) { return a * b; });
+		tester.Binary<int16_t>("sdiv_int16", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, [](int16_t a, int16_t b) { return a / b; });
+		tester.Binary<int16_t>("udiv_int16", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, [](int16_t a, int16_t b) { return ((uint16_t)a) / (uint16_t)b; });
+		tester.Binary<int16_t>("srem_int16", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, [](int16_t a, int16_t b) { return a % b; });
+		tester.Binary<int16_t>("urem_int16", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, [](int16_t a, int16_t b) { return ((uint16_t)a) % (uint16_t)b; });
+		tester.Binary<int16_t>("and_int16", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, [](int16_t a, int16_t b) { return a & b; });
+		tester.Binary<int16_t>("or_int16", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, [](int16_t a, int16_t b) { return a | b; });
+		tester.Binary<int16_t>("xor_int16", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, [](int16_t a, int16_t b) { return a ^ b; });
+		tester.Binary<int16_t>("shl_int16", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, [](int16_t a, int16_t b) { return a << b; });
+		tester.Binary<int16_t>("lshr_int16", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, [](int16_t a, int16_t b) { return ((uint16_t)a) >> (uint16_t)b; });
+		tester.Binary<int16_t>("ashr_int16", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, [](int16_t a, int16_t b) { return a >> b; });
+
+		tester.Binary<int32_t>("add_int32", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, [](int32_t a, int32_t b) { return a + b; });
+		tester.Binary<int32_t>("sub_int32", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, [](int32_t a, int32_t b) { return a - b; });
+		tester.Binary<int32_t>("mul_int32", [](auto cc, auto a, auto b) { return cc->CreateMul(a, b); }, [](int32_t a, int32_t b) { return a * b; });
+		tester.Binary<int32_t>("sdiv_int32", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, [](int32_t a, int32_t b) { return a / b; });
+		tester.Binary<int32_t>("udiv_int32", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, [](int32_t a, int32_t b) { return ((uint32_t)a) / (uint32_t)b; });
+		tester.Binary<int32_t>("srem_int32", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, [](int32_t a, int32_t b) { return a % b; });
+		tester.Binary<int32_t>("urem_int32", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, [](int32_t a, int32_t b) { return ((uint32_t)a) % (uint32_t)b; });
+		tester.Binary<int32_t>("and_int32", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, [](int32_t a, int32_t b) { return a & b; });
+		tester.Binary<int32_t>("or_int32", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, [](int32_t a, int32_t b) { return a | b; });
+		tester.Binary<int32_t>("xor_int32", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, [](int32_t a, int32_t b) { return a ^ b; });
+		tester.Binary<int32_t>("shl_int32", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, [](int32_t a, int32_t b) { return a << b; });
+		tester.Binary<int32_t>("lshr_int32", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, [](int32_t a, int32_t b) { return ((uint32_t)a) >> (uint32_t)b; });
+		tester.Binary<int32_t>("ashr_int32", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, [](int32_t a, int32_t b) { return a >> b; });
+
+		tester.Binary<int64_t>("add_int64", [](auto cc, auto a, auto b) { return cc->CreateAdd(a, b); }, [](int64_t a, int64_t b) { return a + b; });
+		tester.Binary<int64_t>("sub_int64", [](auto cc, auto a, auto b) { return cc->CreateSub(a, b); }, [](int64_t a, int64_t b) { return a - b; });
+		tester.Binary<int64_t>("mul_int64", [](auto cc, auto a, auto b) { return cc->CreateMul(a, b); }, [](int64_t a, int64_t b) { return a * b; });
+		tester.Binary<int64_t>("sdiv_int64", [](auto cc, auto a, auto b) { return cc->CreateSDiv(a, b); }, [](int64_t a, int64_t b) { return a / b; });
+		tester.Binary<int64_t>("udiv_int64", [](auto cc, auto a, auto b) { return cc->CreateUDiv(a, b); }, [](int64_t a, int64_t b) { return ((uint64_t)a) / (uint64_t)b; });
+		tester.Binary<int64_t>("srem_int64", [](auto cc, auto a, auto b) { return cc->CreateSRem(a, b); }, [](int64_t a, int64_t b) { return a % b; });
+		tester.Binary<int64_t>("urem_int64", [](auto cc, auto a, auto b) { return cc->CreateURem(a, b); }, [](int64_t a, int64_t b) { return ((uint64_t)a) % (uint64_t)b; });
+		tester.Binary<int64_t>("and_int64", [](auto cc, auto a, auto b) { return cc->CreateAnd(a, b); }, [](int64_t a, int64_t b) { return a & b; });
+		tester.Binary<int64_t>("or_int64", [](auto cc, auto a, auto b) { return cc->CreateOr(a, b); }, [](int64_t a, int64_t b) { return a | b; });
+		tester.Binary<int64_t>("xor_int64", [](auto cc, auto a, auto b) { return cc->CreateXor(a, b); }, [](int64_t a, int64_t b) { return a ^ b; });
+		tester.Binary<int64_t>("shl_int64", [](auto cc, auto a, auto b) { return cc->CreateShl(a, b); }, [](int64_t a, int64_t b) { return a << b; });
+		tester.Binary<int64_t>("lshr_int64", [](auto cc, auto a, auto b) { return cc->CreateLShr(a, b); }, [](int64_t a, int64_t b) { return ((uint64_t)a) >> (uint64_t)b; });
+		tester.Binary<int64_t>("ashr_int64", [](auto cc, auto a, auto b) { return cc->CreateAShr(a, b); }, [](int64_t a, int64_t b) { return a >> b; });
+
+		tester.Binary<float>("fadd_float", [](auto cc, auto a, auto b) { return cc->CreateFAdd(a, b); }, [](float a, float b) { return a + b; });
+		tester.Binary<float>("fsub_float", [](auto cc, auto a, auto b) { return cc->CreateFSub(a, b); }, [](float a, float b) { return a - b; });
+		tester.Binary<float>("fmul_float", [](auto cc, auto a, auto b) { return cc->CreateFMul(a, b); }, [](float a, float b) { return a * b; });
+		tester.Binary<float>("fdiv_float", [](auto cc, auto a, auto b) { return cc->CreateFDiv(a, b); }, [](float a, float b) { return a / b; });
+
+		tester.Binary<double>("fadd_double", [](auto cc, auto a, auto b) { return cc->CreateFAdd(a, b); }, [](double a, double b) { return a + b; });
+		tester.Binary<double>("fsub_double", [](auto cc, auto a, auto b) { return cc->CreateFSub(a, b); }, [](double a, double b) { return a - b; });
+		tester.Binary<double>("fmul_double", [](auto cc, auto a, auto b) { return cc->CreateFMul(a, b); }, [](double a, double b) { return a * b; });
+		tester.Binary<double>("fdiv_double", [](auto cc, auto a, auto b) { return cc->CreateFDiv(a, b); }, [](double a, double b) { return a / b; });
+
+		tester.Convert<int8_t, int8_t>("trunc_i8_i8", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int8_t a) { return (int8_t)a; });
+		tester.Convert<int8_t, int16_t>("trunc_i8_i16", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int16_t a) { return (int8_t)a; });
+		tester.Convert<int8_t, int32_t>("trunc_i8_i32", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int32_t a) { return (int8_t)a; });
+		tester.Convert<int8_t, int64_t>("trunc_i8_i64", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int64_t a) { return (int8_t)a; });
+		tester.Convert<int16_t, int16_t>("trunc_i16_i16", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int16_t a) { return (int16_t)a; });
+		tester.Convert<int16_t, int32_t>("trunc_i16_i32", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int32_t a) { return (int16_t)a; });
+		tester.Convert<int16_t, int64_t>("trunc_i16_i64", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int64_t a) { return (int16_t)a; });
+		tester.Convert<int32_t, int32_t>("trunc_i32_i32", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int32_t a) { return (int32_t)a; });
+		tester.Convert<int32_t, int64_t>("trunc_i32_i64", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int64_t a) { return (int32_t)a; });
+		tester.Convert<int64_t, int64_t>("trunc_i64_i64", [](auto cc, auto a, auto type) { return cc->CreateTrunc(a, type); }, [](int64_t a) { return (int64_t)a; });
+
+		tester.Convert<int8_t, int8_t>("sext_i8_i8", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int8_t a) { return (int8_t)a; });
+		tester.Convert<int16_t, int8_t>("sext_i16_i8", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int8_t a) { return (int16_t)a; });
+		tester.Convert<int32_t, int8_t>("sext_i32_i8", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int8_t a) { return (int32_t)a; });
+		tester.Convert<int64_t, int8_t>("sext_i64_i8", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int8_t a) { return (int64_t)a; });
+		tester.Convert<int16_t, int16_t>("sext_i16_i16", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int16_t a) { return (int16_t)a; });
+		tester.Convert<int32_t, int16_t>("sext_i32_i16", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int16_t a) { return (int32_t)a; });
+		tester.Convert<int64_t, int16_t>("sext_i64_i16", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int16_t a) { return (int64_t)a; });
+		tester.Convert<int32_t, int32_t>("sext_i32_i32", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int32_t a) { return (int32_t)a; });
+		tester.Convert<int64_t, int32_t>("sext_i64_i32", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int32_t a) { return (int64_t)a; });
+		tester.Convert<int64_t, int64_t>("sext_i64_i64", [](auto cc, auto a, auto type) { return cc->CreateSExt(a, type); }, [](int64_t a) { return (int64_t)a; });
+
+		tester.Convert<int8_t, int8_t>("zext_i8_i8", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int8_t a) { return (int8_t)(uint8_t)a; });
+		tester.Convert<int16_t, int8_t>("zext_i16_i8", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int8_t a) { return (int16_t)(uint8_t)a; });
+		tester.Convert<int32_t, int8_t>("zext_i32_i8", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int8_t a) { return (int32_t)(uint8_t)a; });
+		tester.Convert<int64_t, int8_t>("zext_i64_i8", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int8_t a) { return (int64_t)(uint8_t)a; });
+		tester.Convert<int16_t, int16_t>("zext_i16_i16", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int16_t a) { return (int16_t)(uint16_t)a; });
+		tester.Convert<int32_t, int16_t>("zext_i32_i16", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int16_t a) { return (int32_t)(uint16_t)a; });
+		tester.Convert<int64_t, int16_t>("zext_i64_i16", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int16_t a) { return (int64_t)(uint16_t)a; });
+		tester.Convert<int32_t, int32_t>("zext_i32_i32", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int32_t a) { return (int32_t)(uint32_t)a; });
+		tester.Convert<int64_t, int32_t>("zext_i64_i32", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int32_t a) { return (int64_t)(uint32_t)a; });
+		tester.Convert<int64_t, int64_t>("zext_i64_i64", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int64_t a) { return (int64_t)(uint64_t)a; });
+
+		tester.Run();
 
 		return 0;
 	}
@@ -285,6 +288,9 @@ int main(int argc, char** argv)
 		std::cout << e.what() << std::endl;
 		return 1;
 	}
-
-	return 0;
+	catch (...)
+	{
+		std::cout << "Unknown exception caught!" << std::endl;
+		return 1;
+	}
 }
