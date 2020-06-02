@@ -49,7 +49,11 @@ public:
 			for (int i = 0; i < 10; i++)
 			{
 				auto a = RandomValue<ArgT>();
-				if ((ptr(a) != cppversion(a))) return false;
+				if ((ptr(a) != cppversion(a)))
+				{
+					ptr(a); // for debug breakpoint
+					return false;
+				}
 			}
 			return true;
 		};
@@ -76,7 +80,11 @@ public:
 			for (int i = 0; i < 10; i++)
 			{
 				auto a = RandomValue<T>();
-				if ((ptr(a) != cppversion(a))) return false;
+				if ((ptr(a) != cppversion(a)))
+				{
+					ptr(a); // for debug breakpoint
+					return false;
+				}
 			}
 			return true;
 		};
@@ -105,14 +113,51 @@ public:
 				auto a = RandomValue<T>();
 				auto b = RandomValue<T>();
 				if (b == T()) b++; // to avoid division by zero
-				if ((ptr(a, b) != cppversion(a, b))) return false;
+				if ((ptr(a, b) != cppversion(a, b)))
+				{
+					ptr(a, b); // for debug breakpoint
+					return false;
+				}
 			}
 			return true;
 		};
 		
 		Test(name, create, run);
 	}
-	
+
+	template<typename T>
+	void Compare(std::string name, std::function<IRValue*(IRBuilder*, IRValue*, IRValue*)> codegen, std::function<bool(T, T)> cppversion)
+	{
+		auto create = [=](IRContext* context)
+		{
+			IRType* type = GetIRType<T>(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(context->getInt1Ty(), { type, type }), name);
+			
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+			builder.CreateRet(codegen(&builder, func->args[0], func->args[1]));
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<int8_t(*)(T, T)>(jit->getPointerToFunction(name));
+			for (int i = 0; i < 10; i++)
+			{
+				auto a = RandomValue<T>();
+				auto b = RandomValue<T>();
+				if (b == T()) b++; // to avoid division by zero
+				if ((ptr(a, b) != (int8_t)cppversion(a, b)))
+				{
+					ptr(a, b); // for debug breakpoint
+					return false;
+				}
+			}
+			return true;
+		};
+		
+		Test(name, create, run);
+	}
+
 	void Run()
 	{
 		std::cout << "Creating tests" << std::endl;
@@ -141,22 +186,28 @@ public:
 	}
 
 private:
-	template<typename T> IRType* GetIRType(IRContext* ircontext) { return ircontext->getInt8PtrTy(); }
+	template<typename T> IRType* GetIRType(IRContext* ircontext) { static_assert(std::is_pointer<T>::value, "Unsupported type"); return ircontext->getInt8PtrTy(); }
 	template<> IRType* GetIRType<void>(IRContext* ircontext) { return ircontext->getVoidTy(); }
-	template<> IRType* GetIRType<char>(IRContext* ircontext) { return ircontext->getInt8Ty(); }
-	template<> IRType* GetIRType<unsigned char>(IRContext* ircontext) { return ircontext->getInt8Ty(); }
-	template<> IRType* GetIRType<short>(IRContext* ircontext) { return ircontext->getInt16Ty(); }
-	template<> IRType* GetIRType<unsigned short>(IRContext* ircontext) { return ircontext->getInt16Ty(); }
-	template<> IRType* GetIRType<int>(IRContext* ircontext) { return ircontext->getInt32Ty(); }
-	template<> IRType* GetIRType<unsigned int>(IRContext* ircontext) { return ircontext->getInt32Ty(); }
-	template<> IRType* GetIRType<long long>(IRContext* ircontext) { return ircontext->getInt64Ty(); }
-	template<> IRType* GetIRType<unsigned long long>(IRContext* ircontext) { return ircontext->getInt64Ty(); }
+	template<> IRType* GetIRType<int8_t>(IRContext* ircontext) { return ircontext->getInt8Ty(); }
+	template<> IRType* GetIRType<uint8_t>(IRContext* ircontext) { return ircontext->getInt8Ty(); }
+	template<> IRType* GetIRType<int16_t>(IRContext* ircontext) { return ircontext->getInt16Ty(); }
+	template<> IRType* GetIRType<uint16_t>(IRContext* ircontext) { return ircontext->getInt16Ty(); }
+	template<> IRType* GetIRType<int32_t>(IRContext* ircontext) { return ircontext->getInt32Ty(); }
+	template<> IRType* GetIRType<uint32_t>(IRContext* ircontext) { return ircontext->getInt32Ty(); }
+	template<> IRType* GetIRType<int64_t>(IRContext* ircontext) { return ircontext->getInt64Ty(); }
+	template<> IRType* GetIRType<uint64_t>(IRContext* ircontext) { return ircontext->getInt64Ty(); }
 	template<> IRType* GetIRType<float>(IRContext* ircontext) { return ircontext->getFloatTy(); }
 	template<> IRType* GetIRType<double>(IRContext* ircontext) { return ircontext->getDoubleTy(); }
 
 	template<typename T> T RandomValue() { return (T)rand(); }
+	template<> int8_t RandomValue<int8_t>() { return rand() >> 8; }
+	template<> uint8_t RandomValue<uint8_t>() { return rand() >> 8; }
+	template<> int16_t RandomValue<int16_t>() { return rand(); }
+	template<> uint16_t RandomValue<uint16_t>() { return rand(); }
 	template<> int32_t RandomValue<int32_t>() { return ((int32_t)rand()) << 16; }
+	template<> uint32_t RandomValue<uint32_t>() { return ((uint32_t)rand()) << 16; }
 	template<> int64_t RandomValue<int64_t>() { return ((int64_t)rand()) << 32; }
+	template<> uint64_t RandomValue<uint64_t>() { return ((uint64_t)rand()) << 32; }
 	template<> float RandomValue<float>() { return (float)rand(); }
 	template<> double RandomValue<double>() { return (double)rand(); }
 
@@ -278,6 +329,70 @@ int main(int argc, char** argv)
 		tester.Convert<int32_t, int32_t>("zext_i32_i32", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int32_t a) { return (int32_t)(uint32_t)a; });
 		tester.Convert<int64_t, int32_t>("zext_i64_i32", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int32_t a) { return (int64_t)(uint32_t)a; });
 		tester.Convert<int64_t, int64_t>("zext_i64_i64", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int64_t a) { return (int64_t)(uint64_t)a; });
+
+		tester.Compare<int8_t>("icmpslt_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpSLT(a, b); }, [](int8_t a, int8_t b) { return a < b; });
+		tester.Compare<int16_t>("icmpslt_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpSLT(a, b); }, [](int16_t a, int16_t b) { return a < b; });
+		tester.Compare<int32_t>("icmpslt_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpSLT(a, b); }, [](int32_t a, int32_t b) { return a < b; });
+		tester.Compare<int64_t>("icmpslt_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpSLT(a, b); }, [](int64_t a, int64_t b) { return a < b; });
+
+		tester.Compare<int8_t>("icmpsgt_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpSGT(a, b); }, [](int8_t a, int8_t b) { return a > b; });
+		tester.Compare<int16_t>("icmpsgt_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpSGT(a, b); }, [](int16_t a, int16_t b) { return a > b; });
+		tester.Compare<int32_t>("icmpsgt_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpSGT(a, b); }, [](int32_t a, int32_t b) { return a > b; });
+		tester.Compare<int64_t>("icmpsgt_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpSGT(a, b); }, [](int64_t a, int64_t b) { return a > b; });
+
+		tester.Compare<int8_t>("icmpsle_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpSLE(a, b); }, [](int8_t a, int8_t b) { return a <= b; });
+		tester.Compare<int16_t>("icmpsle_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpSLE(a, b); }, [](int16_t a, int16_t b) { return a <= b; });
+		tester.Compare<int32_t>("icmpsle_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpSLE(a, b); }, [](int32_t a, int32_t b) { return a <= b; });
+		tester.Compare<int64_t>("icmpsle_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpSLE(a, b); }, [](int64_t a, int64_t b) { return a <= b; });
+
+		tester.Compare<int8_t>("icmpsge_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpSGE(a, b); }, [](int8_t a, int8_t b) { return a >= b; });
+		tester.Compare<int16_t>("icmpsge_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpSGE(a, b); }, [](int16_t a, int16_t b) { return a >= b; });
+		tester.Compare<int32_t>("icmpsge_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpSGE(a, b); }, [](int32_t a, int32_t b) { return a >= b; });
+		tester.Compare<int64_t>("icmpsge_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpSGE(a, b); }, [](int64_t a, int64_t b) { return a >= b; });
+
+		tester.Compare<uint8_t>("icmpult_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpULT(a, b); }, [](uint8_t a, uint8_t b) { return a < b; });
+		tester.Compare<uint16_t>("icmpult_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpULT(a, b); }, [](uint16_t a, uint16_t b) { return a < b; });
+		tester.Compare<uint32_t>("icmpult_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpULT(a, b); }, [](uint32_t a, uint32_t b) { return a < b; });
+		tester.Compare<uint64_t>("icmpult_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpULT(a, b); }, [](uint64_t a, uint64_t b) { return a < b; });
+
+		tester.Compare<uint8_t>("icmpugt_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpUGT(a, b); }, [](uint8_t a, uint8_t b) { return a > b; });
+		tester.Compare<uint16_t>("icmpugt_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpUGT(a, b); }, [](uint16_t a, uint16_t b) { return a > b; });
+		tester.Compare<uint32_t>("icmpugt_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpUGT(a, b); }, [](uint32_t a, uint32_t b) { return a > b; });
+		tester.Compare<uint64_t>("icmpugt_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpUGT(a, b); }, [](uint64_t a, uint64_t b) { return a > b; });
+
+		tester.Compare<uint8_t>("icmpule_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpULE(a, b); }, [](uint8_t a, uint8_t b) { return a <= b; });
+		tester.Compare<uint16_t>("icmpule_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpULE(a, b); }, [](uint16_t a, uint16_t b) { return a <= b; });
+		tester.Compare<uint32_t>("icmpule_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpULE(a, b); }, [](uint32_t a, uint32_t b) { return a <= b; });
+		tester.Compare<uint64_t>("icmpule_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpULE(a, b); }, [](uint64_t a, uint64_t b) { return a <= b; });
+
+		tester.Compare<uint8_t>("icmpuge_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpUGE(a, b); }, [](uint8_t a, uint8_t b) { return a >= b; });
+		tester.Compare<uint16_t>("icmpuge_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpUGE(a, b); }, [](uint16_t a, uint16_t b) { return a >= b; });
+		tester.Compare<uint32_t>("icmpuge_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpUGE(a, b); }, [](uint32_t a, uint32_t b) { return a >= b; });
+		tester.Compare<uint64_t>("icmpuge_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpUGE(a, b); }, [](uint64_t a, uint64_t b) { return a >= b; });
+
+		tester.Compare<uint8_t>("icmpeq_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpEQ(a, b); }, [](uint8_t a, uint8_t b) { return a == b; });
+		tester.Compare<uint16_t>("icmpeq_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpEQ(a, b); }, [](uint16_t a, uint16_t b) { return a == b; });
+		tester.Compare<uint32_t>("icmpeq_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpEQ(a, b); }, [](uint32_t a, uint32_t b) { return a == b; });
+		tester.Compare<uint64_t>("icmpeq_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpEQ(a, b); }, [](uint64_t a, uint64_t b) { return a == b; });
+
+		tester.Compare<uint8_t>("icmpne_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpNE(a, b); }, [](uint8_t a, uint8_t b) { return a != b; });
+		tester.Compare<uint16_t>("icmpne_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpNE(a, b); }, [](uint16_t a, uint16_t b) { return a != b; });
+		tester.Compare<uint32_t>("icmpne_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpNE(a, b); }, [](uint32_t a, uint32_t b) { return a != b; });
+		tester.Compare<uint64_t>("icmpne_i64", [](auto cc, auto a, auto b) { return cc->CreateICmpNE(a, b); }, [](uint64_t a, uint64_t b) { return a != b; });
+
+		tester.Compare<float>("fcmpult_float", [](auto cc, auto a, auto b) { return cc->CreateFCmpULT(a, b); }, [](float a, float b) { return a < b; });
+		tester.Compare<float>("fcmpugt_float", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGT(a, b); }, [](float a, float b) { return a > b; });
+		tester.Compare<float>("fcmpule_float", [](auto cc, auto a, auto b) { return cc->CreateFCmpULE(a, b); }, [](float a, float b) { return a <= b; });
+		tester.Compare<float>("fcmpuge_float", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGE(a, b); }, [](float a, float b) { return a >= b; });
+		tester.Compare<float>("fcmpueq_float", [](auto cc, auto a, auto b) { return cc->CreateFCmpUEQ(a, b); }, [](float a, float b) { return a == b; });
+		tester.Compare<float>("fcmpune_float", [](auto cc, auto a, auto b) { return cc->CreateFCmpUNE(a, b); }, [](float a, float b) { return a != b; });
+
+		tester.Compare<double>("fcmpult_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpULT(a, b); }, [](double a, double b) { return a < b; });
+		tester.Compare<double>("fcmpugt_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGT(a, b); }, [](double a, double b) { return a > b; });
+		tester.Compare<double>("fcmpule_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpULE(a, b); }, [](double a, double b) { return a <= b; });
+		tester.Compare<double>("fcmpuge_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGE(a, b); }, [](double a, double b) { return a >= b; });
+		tester.Compare<double>("fcmpueq_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUEQ(a, b); }, [](double a, double b) { return a == b; });
+		tester.Compare<double>("fcmpune_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUNE(a, b); }, [](double a, double b) { return a != b; });
 
 		tester.Run();
 
