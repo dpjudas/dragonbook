@@ -655,7 +655,7 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 
 int MachineInstSelection::getDataSizeType(IRType* type)
 {
-	if (isInt32(type) || isInt1(type))
+	if (isInt32(type))
 		return 3;
 	else if (isFloat(type))
 		return 1;
@@ -663,7 +663,7 @@ int MachineInstSelection::getDataSizeType(IRType* type)
 		return 0;
 	else if (isInt16(type))
 		return 4;
-	else if (isInt8(type))
+	else if (isInt8(type) || isInt1(type))
 		return 5;
 	else // if (isInt64(type) || isPointer(type) || isFunction(type))
 		return 2;
@@ -875,9 +875,8 @@ void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpco
 		src1 = instRegister[node->operand1];
 	}
 
-	// Create 32 bit register, cleared to zero (move instruction below only moves 8 bits)
+	// Create 8 bit register
 	auto dst = newReg(node);
-	emitInst(MachineInstOpcode::xor32, dst, dst);
 
 	// Perform comparison
 	emitInst(cmpOps[dataSizeType], src1, node->operand2, dataSizeType);
