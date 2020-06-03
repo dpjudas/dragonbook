@@ -271,7 +271,7 @@ void MachineInstSelection::inst(IRInstICmpULT* node)
 
 void MachineInstSelection::inst(IRInstFCmpULT* node)
 {
-	simpleCompareInst(node, MachineInstOpcode::seta);
+	simpleCompareInst(node, MachineInstOpcode::setb);
 }
 
 void MachineInstSelection::inst(IRInstICmpSGT* node)
@@ -301,7 +301,7 @@ void MachineInstSelection::inst(IRInstICmpULE* node)
 
 void MachineInstSelection::inst(IRInstFCmpULE* node)
 {
-	simpleCompareInst(node, MachineInstOpcode::setae);
+	simpleCompareInst(node, MachineInstOpcode::setbe);
 }
 
 void MachineInstSelection::inst(IRInstICmpSGE* node)
