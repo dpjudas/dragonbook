@@ -13,6 +13,8 @@ set(LIB_SOURCES
 	ir/IRBasicBlock.h
 	ir/IRFunction.cpp
 	ir/IRFunction.h
+	ir/IRInstValidator.cpp
+	ir/IRInstValidator.h
 	jit/JITRuntime.cpp
 	jit/JITRuntime.h
 	jit/NativeSymbolResolver.cpp

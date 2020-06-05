@@ -4,6 +4,7 @@
 #include "IRInst.h"
 #include "IRBasicBlock.h"
 #include "IRFunction.h"
+#include "IRInstValidator.h"
 
 class IRValue;
 class IRType;
@@ -96,6 +97,8 @@ private:
 	T *add(Args && ... args)
 	{
 		T *inst = bb->function->context->newValue<T>(std::forward<Args>(args)...);
+		IRInstValidator validator;
+		inst->visit(&validator);
 		bb->code.push_back(inst);
 		return inst;
 	}
