@@ -103,5 +103,11 @@ private:
 		return inst;
 	}
 
+	template<typename T, typename... Args>
+	T* addCmp(Args&& ... args)
+	{
+		return add<T>(bb->function->context->getInt1Ty(), std::forward<Args>(args)...);
+	}
+
 	IRBasicBlock *bb = nullptr;
 };

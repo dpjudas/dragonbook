@@ -179,82 +179,82 @@ IRInstAShr *IRBuilder::CreateAShr(IRValue *a, IRValue *b)
 
 IRInstICmpSLT *IRBuilder::CreateICmpSLT(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpSLT>(a, b);
+	return addCmp<IRInstICmpSLT>(a, b);
 }
 
 IRInstICmpULT *IRBuilder::CreateICmpULT(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpULT>(a, b);
+	return addCmp<IRInstICmpULT>(a, b);
 }
 
 IRInstFCmpULT *IRBuilder::CreateFCmpULT(IRValue *a, IRValue *b)
 {
-	return add<IRInstFCmpULT>(a, b);
+	return addCmp<IRInstFCmpULT>(a, b);
 }
 
 IRInstICmpSGT *IRBuilder::CreateICmpSGT(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpSGT>(a, b);
+	return addCmp<IRInstICmpSGT>(a, b);
 }
 
 IRInstICmpUGT *IRBuilder::CreateICmpUGT(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpUGT>(a, b);
+	return addCmp<IRInstICmpUGT>(a, b);
 }
 
 IRInstFCmpUGT *IRBuilder::CreateFCmpUGT(IRValue *a, IRValue *b)
 {
-	return add<IRInstFCmpUGT>(a, b);
+	return addCmp<IRInstFCmpUGT>(a, b);
 }
 
 IRInstICmpSLE *IRBuilder::CreateICmpSLE(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpSLE>(a, b);
+	return addCmp<IRInstICmpSLE>(a, b);
 }
 
 IRInstICmpULE *IRBuilder::CreateICmpULE(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpULE>(a, b);
+	return addCmp<IRInstICmpULE>(a, b);
 }
 
 IRInstFCmpULE *IRBuilder::CreateFCmpULE(IRValue *a, IRValue *b)
 {
-	return add<IRInstFCmpULE>(a, b);
+	return addCmp<IRInstFCmpULE>(a, b);
 }
 
 IRInstICmpSGE *IRBuilder::CreateICmpSGE(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpSGE>(a, b);
+	return addCmp<IRInstICmpSGE>(a, b);
 }
 
 IRInstICmpUGE *IRBuilder::CreateICmpUGE(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpUGE>(a, b);
+	return addCmp<IRInstICmpUGE>(a, b);
 }
 
 IRInstFCmpUGE *IRBuilder::CreateFCmpUGE(IRValue *a, IRValue *b)
 {
-	return add<IRInstFCmpUGE>(a, b);
+	return addCmp<IRInstFCmpUGE>(a, b);
 }
 
 IRInstICmpEQ *IRBuilder::CreateICmpEQ(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpEQ>(a, b);
+	return addCmp<IRInstICmpEQ>(a, b);
 }
 
 IRInstFCmpUEQ *IRBuilder::CreateFCmpUEQ(IRValue *a, IRValue *b)
 {
-	return add<IRInstFCmpUEQ>(a, b);
+	return addCmp<IRInstFCmpUEQ>(a, b);
 }
 
 IRInstICmpNE *IRBuilder::CreateICmpNE(IRValue *a, IRValue *b)
 {
-	return add<IRInstICmpNE>(a, b);
+	return addCmp<IRInstICmpNE>(a, b);
 }
 
 IRInstFCmpUNE *IRBuilder::CreateFCmpUNE(IRValue *a, IRValue *b)
 {
-	return add<IRInstFCmpUNE>(a, b);
+	return addCmp<IRInstFCmpUNE>(a, b);
 }
 
 IRInstAnd *IRBuilder::CreateAnd(IRValue *a, IRValue *b)

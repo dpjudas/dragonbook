@@ -861,7 +861,7 @@ void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpco
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 	static const MachineInstOpcode cmpOps[] = { MachineInstOpcode::ucomisd, MachineInstOpcode::ucomiss, MachineInstOpcode::cmp64, MachineInstOpcode::cmp32, MachineInstOpcode::cmp16, MachineInstOpcode::cmp8 };
 
-	int dataSizeType = getDataSizeType(node->type);
+	int dataSizeType = getDataSizeType(node->operand1->type);
 
 	// operand1 must be in a register:
 	MachineOperand src1;

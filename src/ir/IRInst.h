@@ -34,6 +34,9 @@ public:
 
 	IRValue *operand1;
 	IRValue *operand2;
+
+protected:
+	IRInstBinary(IRType* type, IRValue* operand1, IRValue* operand2) : IRInst(type), operand1(operand1), operand2(operand2) { }
 };
 
 class IRInstLoad : public IRInstUnary { public: IRInstLoad(IRValue *operand) : IRInstUnary(operand) { type = operand->type->getPointerElementType(); } void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
@@ -62,27 +65,33 @@ class IRInstShl : public IRInstBinary { public: using IRInstBinary::IRInstBinary
 class IRInstLShr : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor* visitor) { visitor->inst(this); } };
 class IRInstAShr : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
-class IRInstICmpSLT : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstICmpULT : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstFCmpULT : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstCmp : public IRInstBinary
+{
+public:
+	IRInstCmp(IRType* type, IRValue* operand1, IRValue* operand2) : IRInstBinary(type, operand1, operand2) { }
+};
 
-class IRInstICmpSGT : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstICmpUGT : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstFCmpUGT : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpSLT : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpULT : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstFCmpULT : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
-class IRInstICmpSLE : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstICmpULE : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstFCmpULE : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpSGT : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpUGT : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstFCmpUGT : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
-class IRInstICmpSGE : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstICmpUGE : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstFCmpUGE : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpSLE : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpULE : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstFCmpULE : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
-class IRInstICmpEQ : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstFCmpUEQ : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpSGE : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpUGE : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstFCmpUGE : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
-class IRInstICmpNE : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
-class IRInstFCmpUNE : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstICmpEQ : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstFCmpUEQ : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+
+class IRInstICmpNE : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
+class IRInstFCmpUNE : public IRInstCmp { public: using IRInstCmp::IRInstCmp; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 
 class IRInstAnd : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
 class IRInstOr : public IRInstBinary { public: using IRInstBinary::IRInstBinary; void visit(IRInstVisitor *visitor) { visitor->inst(this); } };
