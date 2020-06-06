@@ -605,7 +605,7 @@ void MachineInstSelection::inst(IRInstCondBr* node)
 	}
 	else
 	{
-		emitInst(MachineInstOpcode::cmp32, node->condition, 3, newImm(1));
+		emitInst(MachineInstOpcode::cmp8, node->condition, 3, newImm(1));
 		emitInst(MachineInstOpcode::je, node->bb1);
 		emitInst(MachineInstOpcode::jmp, node->bb2);
 	}
