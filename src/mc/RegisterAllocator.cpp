@@ -102,6 +102,9 @@ void RegisterAllocator::run()
 				}
 			}
 
+			if (inst->opcode == MachineInstOpcode::jmp && i + 1 < func->basicBlocks.size() && func->basicBlocks[i + 1] == inst->operands[0].bb)
+				continue;
+
 			emittedInstructions.push_back(inst);
 		}
 
@@ -131,9 +134,16 @@ void RegisterAllocator::run()
 
 	// [funcargs] [retaddr] <framebase> [save/spill area] <spillbase> [dsa/alloca area] [callargs] <rsp>
 
+	int callReturnAddr = 8;
 	int pushStackAdjustment = (int)savedRegs.size() * 8;
-	int spillAreaSize = (int)savedXmmRegs.size() * 16 + (nextStackOffset + 15) / 16 * 16; // 16-byte align spill area
-	int callargsSize = func->maxCallArgsSize > 0 ? (func->maxCallArgsSize + 7) / 16 * 16 + 8 : 0; // 16-byte align while taking the call return address into account
+	int spillAreaSize = (int)savedXmmRegs.size() * 16 + nextStackOffset;
+	int callargsSize = (func->maxCallArgsSize + 15) / 16 * 16;
+
+	// rsp is 16-byte aligned + 8 bytes (for the call return address) when entering the prolog.
+	// Alloca needs to be 16-byte aligned, so the sum of the return address, the pushed registers and spill area needs to end at a 16-byte boundary
+	int allocaStart = (callReturnAddr + pushStackAdjustment + spillAreaSize + 15) / 16 * 16;
+	spillAreaSize = allocaStart - pushStackAdjustment - callReturnAddr;
+
 	int frameSize = pushStackAdjustment + spillAreaSize + callargsSize;
 	int frameStackAdjustment = frameSize - pushStackAdjustment;
 
@@ -234,17 +244,6 @@ void RegisterAllocator::emitProlog(const std::vector<RegisterName>& savedRegs, c
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
 		inst->unwindHint = MachineUnwindHint::SaveFrameRegister;
-		func->prolog->code.push_back(inst);
-	}
-
-	{
-		MachineOperand dst;
-		dst.type = MachineOperandType::basicblock;
-		dst.bb = func->basicBlocks.front();
-
-		auto inst = context->newMachineInst();
-		inst->opcode = MachineInstOpcode::jmp;
-		inst->operands.push_back(dst);
 		func->prolog->code.push_back(inst);
 	}
 }
