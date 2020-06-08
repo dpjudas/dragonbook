@@ -125,10 +125,11 @@ class MachineStackAlloc
 {
 public:
 	MachineStackAlloc() = default;
-	MachineStackAlloc(int registerIndex, size_t size) : registerIndex(registerIndex), size(size) { }
+	MachineStackAlloc(int registerIndex, size_t size, std::string name) : registerIndex(registerIndex), size(size), name(std::move(name)) { }
 
 	int registerIndex = 0;
 	size_t size = 0;
+	std::string name;
 };
 
 class MachineFunction

@@ -55,7 +55,7 @@ void RegisterAllocator::run()
 									comment = "kill vreg ";
 								else
 									comment += ", ";
-								comment += std::to_string(vregIndex);*/
+								comment += getVRegName(vregIndex);*/
 							}
 						}
 					}
@@ -350,6 +350,7 @@ void RegisterAllocator::allocStackVars()
 		auto& vreg = reginfo[stackvar.registerIndex];
 		vreg.stacklocation.spillOffset = nextStackOffset;
 		vreg.stackvar = true;
+		vreg.name = &stackvar.name;
 		nextStackOffset += (int)stackvar.size;
 	}
 }
@@ -448,7 +449,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->opcode = MachineInstOpcode::lea;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
-		inst->comment = "ptr vreg " + std::to_string(vregIndex);
+		inst->comment = "ptr " + getVRegName(vregIndex);
 		emittedInstructions.push_back(inst);
 
 		physreg.vreg = vregIndex;
@@ -466,7 +467,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::load64 : MachineInstOpcode::loadsd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
-		inst->comment = "load vreg " + std::to_string(vregIndex);
+		inst->comment = "load " + getVRegName(vregIndex);
 		emittedInstructions.push_back(inst);
 
 		physreg.vreg = vregIndex;
@@ -486,7 +487,7 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::mov64 : MachineInstOpcode::movsd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
-		inst->comment = "move vreg " + std::to_string(vregIndex);
+		inst->comment = "move " + getVRegName(vregIndex);
 		emittedInstructions.push_back(inst);
 
 		reginfo[vreg.physreg].vreg = -1;
@@ -531,7 +532,7 @@ void RegisterAllocator::assignVirt2StackSlot(int vregIndex)
 		inst->opcode = vreg.cls == MachineRegClass::gp ? MachineInstOpcode::store64 : MachineInstOpcode::storesd;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
-		inst->comment = "save vreg " + std::to_string(vregIndex);
+		inst->comment = "save " + getVRegName(vregIndex);
 		emittedInstructions.push_back(inst);
 
 		vreg.modified = false;
@@ -702,4 +703,12 @@ void RegisterAllocator::setupArgsUnix64()
 		RegisterName::xmm0, RegisterName::xmm1, RegisterName::xmm2, RegisterName::xmm3, RegisterName::xmm4, RegisterName::xmm5, RegisterName::xmm6, RegisterName::xmm7,
 		RegisterName::xmm8, RegisterName::xmm9, RegisterName::xmm10, RegisterName::xmm11, RegisterName::xmm12, RegisterName::xmm13, RegisterName::xmm14, RegisterName::xmm15
 	};
+}
+
+std::string RegisterAllocator::getVRegName(size_t vregIndex)
+{
+	if (reginfo[vregIndex].name)
+		return *reginfo[vregIndex].name;
+	else
+		return "vreg" + std::to_string(vregIndex);
 }

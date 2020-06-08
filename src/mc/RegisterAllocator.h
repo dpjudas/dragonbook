@@ -24,6 +24,7 @@ struct RARegisterInfo
 	MachineOperand stacklocation = nullStackLocation();
 	bool modified = false;
 	bool stackvar = false;
+	const std::string* name = nullptr;
 
 	std::unique_ptr<RARegisterLiveReference> liveReferences;
 };
@@ -73,6 +74,8 @@ private:
 	void addLiveReference(size_t vregIndex, MachineBasicBlock* bb);
 
 	void updateModifiedStatus(MachineInst* inst);
+
+	std::string getVRegName(size_t vregIndex);
 
 	std::vector<RegisterName> volatileRegs;
 	std::set<RegisterName> usedRegs;

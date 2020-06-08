@@ -67,7 +67,7 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 		size = (size + 15) / 16 * 16;
 
 		MachineOperand dst = selection.newReg(node);
-		selection.mfunc->stackvars.push_back({ dst.registerIndex, size });
+		selection.mfunc->stackvars.push_back({ dst.registerIndex, size, node->name });
 	}
 
 	for (size_t i = 0; i < sfunc->basicBlocks.size(); i++)
