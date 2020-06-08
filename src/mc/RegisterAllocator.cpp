@@ -429,6 +429,8 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 	if (physreg.vreg != -1) // Already in use. Make it available.
 		assignVirt2StackSlot(physreg.vreg);
 
+	usedRegs.insert((RegisterName)pregIndex);
+
 	if (vreg.physreg == -1 && vreg.stacklocation.spillOffset == -1) // first time vreg is used
 	{
 		vreg.physreg = pregIndex;
@@ -448,7 +450,6 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->operands.push_back(src);
 		inst->comment = "ptr vreg " + std::to_string(vregIndex);
 		emittedInstructions.push_back(inst);
-		usedRegs.insert((RegisterName)pregIndex);
 
 		physreg.vreg = vregIndex;
 		vreg.physreg = pregIndex;
@@ -467,7 +468,6 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->operands.push_back(src);
 		inst->comment = "load vreg " + std::to_string(vregIndex);
 		emittedInstructions.push_back(inst);
-		usedRegs.insert((RegisterName)pregIndex);
 
 		physreg.vreg = vregIndex;
 		vreg.physreg = pregIndex;
@@ -488,7 +488,6 @@ void RegisterAllocator::assignVirt2Phys(int vregIndex, int pregIndex)
 		inst->operands.push_back(src);
 		inst->comment = "move vreg " + std::to_string(vregIndex);
 		emittedInstructions.push_back(inst);
-		usedRegs.insert((RegisterName)pregIndex);
 
 		reginfo[vreg.physreg].vreg = -1;
 		physreg.vreg = vregIndex;
