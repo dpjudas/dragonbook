@@ -90,7 +90,11 @@ void RegisterAllocator::run()
 				setAsMostRecentlyUsed((int)RegisterName::xmm0);
 			}
 
-			if (inst->opcode == MachineInstOpcode::je || inst->opcode == MachineInstOpcode::jmp)
+			if (inst->opcode == MachineInstOpcode::je)
+			{
+				assignAllToStack();
+			}
+			else if (inst->opcode == MachineInstOpcode::jmp)
 			{
 				if (inst->operands[0].bb == func->epilog)
 				{
@@ -359,7 +363,11 @@ void RegisterAllocator::setAllToStack()
 {
 	for (RARegisterInfo &entry : reginfo)
 	{
-		entry.physreg = -1;
+		if (entry.physreg != -1)
+		{
+			reginfo[entry.physreg].vreg = -1;
+			entry.physreg = -1;
+		}
 	}
 }
 
