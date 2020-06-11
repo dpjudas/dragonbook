@@ -315,6 +315,9 @@ void IRInstValidator::inst(IRInstGEP* node)
 {
 	if (!isPointer(node->ptr->type))
 		throw std::runtime_error("The pointer must be a pointer type");
+
+	for (auto inst : node->instructions)
+		inst->visit(this);
 }
 
 void IRInstValidator::inst(IRInstBr* node)

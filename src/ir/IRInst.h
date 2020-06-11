@@ -144,12 +144,32 @@ class IRInstGEP : public IRInst
 public:
 	IRInstGEP(IRContext *context, IRValue *ptr, const std::vector<IRValue *> &indices) : IRInst(nullptr), ptr(ptr), indices(indices)
 	{
+		struct ValueOffset
+		{
+			IRValue* index = nullptr;
+			int scale = 0;
+		};
+
+		int offset = 0;
+		std::vector<ValueOffset> valueOffsets;
+
 		IRType *curType = ptr->type;
 		for (IRValue *index : indices)
 		{
 			if (dynamic_cast<IRPointerType*>(curType))
 			{
 				curType = curType->getPointerElementType();
+				int scale = curType->getTypeAllocSize();
+
+				IRConstantInt* cindex = dynamic_cast<IRConstantInt*>(index);
+				if (cindex)
+				{
+					offset += scale * (int)cindex->value;
+				}
+				else
+				{
+					valueOffsets.push_back({ index, scale });
+				}
 			}
 			else
 			{
@@ -159,7 +179,13 @@ public:
 					IRConstantInt *cindex = dynamic_cast<IRConstantInt*>(index);
 					if (!cindex)
 						throw std::runtime_error("Indexing into a structure must use a constant integer");
-					curType = stype->elements[cindex->value];
+
+					int cindexval = (int)cindex->value;
+					for (int i = 0; i < cindexval; i++)
+					{
+						offset += (stype->elements[i]->getTypeAllocSize() + 7) / 8 * 8;
+					}
+					curType = stype->elements[cindexval];
 				}
 				else
 				{
@@ -168,12 +194,47 @@ public:
 			}
 		}
 		type = curType->getPointerTo(context);
+
+		// Lower GEP:
+		if (offset != 0 || !valueOffsets.empty())
+		{
+			IRType* int64Ty = context->getInt64Ty();
+			IRValue* result = addInst<IRInstBitCast>(context, ptr, int64Ty); // To do: should be IRInstPtrToInt
+
+			if (offset != 0)
+			{
+				result = addInst<IRInstAdd>(context, result, context->getConstantInt(int64Ty, offset));
+			}
+
+			for (const ValueOffset& valoffset : valueOffsets)
+			{
+				IRValue* index = valoffset.index;
+				if (index->type != int64Ty)
+					index = addInst<IRInstSExt>(context, index, int64Ty);
+				if (valoffset.scale != 1)
+					index = addInst<IRInstMul>(context, index, context->getConstantInt(int64Ty, valoffset.scale));
+				result = addInst<IRInstAdd>(context, result, index);
+			}
+
+			addInst<IRInstBitCast>(context, result, type); // To do: should be IRInstIntToPtr
+		}
 	}
 
 	void visit(IRInstVisitor *visitor) { visitor->inst(this); }
 
 	IRValue *ptr;
 	std::vector<IRValue *> indices;
+
+	std::vector<IRInst*> instructions;
+
+private:
+	template<typename T, typename... Types>
+	T* addInst(IRContext* context, Types&&... args)
+	{
+		T* inst = context->newValue<T>(std::forward<Types>(args)...);
+		instructions.push_back(inst);
+		return inst;
+	}
 };
 
 class IRInstBasicBlockEnd : public IRInst

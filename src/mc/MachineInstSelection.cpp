@@ -551,41 +551,17 @@ void MachineInstSelection::inst(IRInstCall* node)
 
 void MachineInstSelection::inst(IRInstGEP* node)
 {
-	int offset = 0;
-	IRType* curType = node->ptr->type;
-	for (IRValue* index : node->indices)
+	if (!node->instructions.empty())
 	{
-		int cindex = (int)getConstantValueInt(index);
+		for (auto inst : node->instructions)
+			inst->visit(this);
 
-		if (isPointer(curType))
-		{
-			offset += curType->getPointerElementType()->getTypeAllocSize() * cindex;
-			curType = curType->getPointerElementType();
-		}
-		else if (isStruct(curType))
-		{
-			IRStructType* stype = static_cast<IRStructType*>(curType);
-			for (int i = 0; i < cindex; i++)
-			{
-				offset += (stype->elements[i]->getTypeAllocSize() + 7) / 8 * 8;
-			}
-			curType = stype->elements[cindex];
-		}
-		else
-		{
-			throw std::runtime_error("Invalid arguments to GEP instruction");
-		}
-	}
-
-	auto dst = newReg(node);
-
-	if (isConstantInt(node->ptr))
-	{
-		emitInst(MachineInstOpcode::mov64, dst, newImm(getConstantValueInt(node->ptr) + (int64_t)offset));
+		instRegister[node] = instRegister[node->instructions.back()];
 	}
 	else
 	{
-		emitInst(MachineInstOpcode::lea, dst, node->ptr, getDataSizeType(node->ptr->type), newImm((int64_t)offset));
+		auto dst = newReg(node);
+		emitInst(MachineInstOpcode::mov64, dst, node->ptr, getDataSizeType(node->ptr->type));
 	}
 }
 
