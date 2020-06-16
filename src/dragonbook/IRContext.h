@@ -4,7 +4,7 @@
 #include <map>
 #include <vector>
 #include <memory>
-#include "jit/JITRuntime.h"
+#include "JITRuntime.h"
 
 class IRType;
 class IRPointerType;

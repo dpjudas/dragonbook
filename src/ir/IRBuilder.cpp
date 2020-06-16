@@ -1,9 +1,9 @@
 
-#include "IRBuilder.h"
-#include "IRBasicBlock.h"
-#include "IRType.h"
-#include "IRFunction.h"
-#include "IRContext.h"
+#include "dragonbook/IRBuilder.h"
+#include "dragonbook/IRBasicBlock.h"
+#include "dragonbook/IRType.h"
+#include "dragonbook/IRFunction.h"
+#include "dragonbook/IRContext.h"
 
 IRInstLoad *IRBuilder::CreateLoad(IRValue *a)
 {

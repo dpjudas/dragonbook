@@ -1,9 +1,9 @@
 
-#include "IRFunction.h"
-#include "IRContext.h"
-#include "IRInst.h"
-#include "IRBasicBlock.h"
-#include "IRType.h"
+#include "dragonbook/IRFunction.h"
+#include "dragonbook/IRContext.h"
+#include "dragonbook/IRInst.h"
+#include "dragonbook/IRBasicBlock.h"
+#include "dragonbook/IRType.h"
 
 IRFunction::IRFunction(IRContext *context, IRFunctionType *type, const std::string &name) : IRConstant(type), context(context), name(name)
 {

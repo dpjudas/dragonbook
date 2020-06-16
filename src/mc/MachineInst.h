@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "ir/IR.h"
+#include "dragonbook/IR.h"
 
 class MachineBasicBlock;
 

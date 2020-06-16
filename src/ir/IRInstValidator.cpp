@@ -1,6 +1,6 @@
 
-#include "IRInstValidator.h"
-#include "IRInst.h"
+#include "dragonbook/IRInstValidator.h"
+#include "dragonbook/IRInst.h"
 
 void IRInstValidator::inst(IRInstLoad* node)
 {

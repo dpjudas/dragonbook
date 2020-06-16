@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "JITRuntime.h"
+#include "dragonbook/JITRuntime.h"
 
 class NativeSymbolResolver
 {

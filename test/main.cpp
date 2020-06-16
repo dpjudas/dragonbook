@@ -1,6 +1,6 @@
 
-#include "ir/IR.h"
-#include "jit/JITRuntime.h"
+#include "dragonbook/IR.h"
+#include "dragonbook/JITRuntime.h"
 #include <iostream>
 #include <exception>
 #include <functional>
