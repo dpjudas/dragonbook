@@ -158,6 +158,74 @@ public:
 		Test(name, create, run);
 	}
 
+	template<typename T>
+	void Load(std::string name)
+	{
+		auto create = [=](IRContext* context)
+		{
+			IRType* type = GetIRType<T>(context);
+			IRType* ptrtype = type->getPointerTo(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(type, { ptrtype }), name);
+
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+			builder.CreateRet(builder.CreateLoad(func->args[0]));
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<T(*)(T*)>(jit->getPointerToFunction(name));
+			for (int i = 0; i < 10; i++)
+			{
+				auto a = RandomValue<T>();
+				auto b = ptr(&a);
+				if (a != b)
+				{
+					ptr(&a); // for debug breakpoint
+					return false;
+				}
+			}
+			return true;
+		};
+
+		Test(name, create, run);
+	}
+
+	template<typename T>
+	void Store(std::string name)
+	{
+		auto create = [=](IRContext* context)
+		{
+			IRType* type = GetIRType<T>(context);
+			IRType* ptrtype = type->getPointerTo(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(context->getVoidTy(), { type, ptrtype }), name);
+
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+			builder.CreateStore(func->args[0], func->args[1]);
+			builder.CreateRetVoid();
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<void(*)(T, T*)>(jit->getPointerToFunction(name));
+			for (int i = 0; i < 10; i++)
+			{
+				auto a = RandomValue<T>();
+				auto b = RandomValue<T>();
+				ptr(a, &b);
+				if (a != b)
+				{
+					ptr(a, &b); // for debug breakpoint
+					return false;
+				}
+			}
+			return true;
+		};
+
+		Test(name, create, run);
+	}
+
 	void Run()
 	{
 		std::cout << "Creating tests" << std::endl;
@@ -208,8 +276,8 @@ private:
 	template<> uint32_t RandomValue<uint32_t>() { return ((uint32_t)rand()) << 16; }
 	template<> int64_t RandomValue<int64_t>() { return ((int64_t)rand()) << 32; }
 	template<> uint64_t RandomValue<uint64_t>() { return ((uint64_t)rand()) << 32; }
-	template<> float RandomValue<float>() { return (float)rand(); }
-	template<> double RandomValue<double>() { return (double)rand(); }
+	template<> float RandomValue<float>() { return (float)rand() + 0.5f; }
+	template<> double RandomValue<double>() { return (double)rand() + 0.5; }
 
 	std::vector<std::unique_ptr<InstructionTest>> tests;
 };
@@ -393,6 +461,20 @@ int main(int argc, char** argv)
 		tester.Compare<double>("fcmpuge_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGE(a, b); }, [](double a, double b) { return a >= b; });
 		tester.Compare<double>("fcmpueq_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUEQ(a, b); }, [](double a, double b) { return a == b; });
 		tester.Compare<double>("fcmpune_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUNE(a, b); }, [](double a, double b) { return a != b; });
+
+		tester.Load<uint8_t>("load_i8");
+		tester.Load<uint16_t>("load_i16");
+		tester.Load<uint32_t>("load_i32");
+		tester.Load<uint64_t>("load_i64");
+		tester.Load<float>("load_float");
+		tester.Load<double>("load_double");
+
+		tester.Store<uint8_t>("store_i8");
+		tester.Store<uint16_t>("store_i16");
+		tester.Store<uint32_t>("store_i32");
+		tester.Store<uint64_t>("store_i64");
+		tester.Store<float>("store_float");
+		tester.Store<double>("store_double");
 
 		tester.Run();
 
