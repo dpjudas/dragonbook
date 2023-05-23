@@ -642,7 +642,7 @@ void MachineCodeWriter::or8(MachineInst* inst)
 	if (inst->operands[1].type == MachineOperandType::imm)
 		emitInstMI(OpFlags::Rex, 0x80, 1, 8, inst);
 	else
-		emitInstRM(OpFlags::Rex, 0x08, inst);
+		emitInstRM(OpFlags::Rex, 0x0b, inst);
 }
 
 void MachineCodeWriter::xorpd(MachineInst* inst)

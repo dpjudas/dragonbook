@@ -202,7 +202,20 @@ void MachineInstSelection::inst(IRInstFNeg* node)
 void MachineInstSelection::inst(IRInstMul* node)
 {
 	static const MachineInstOpcode ops[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::imul64, MachineInstOpcode::imul32, MachineInstOpcode::imul16, MachineInstOpcode::imul8 };
-	simpleBinaryInst(node, ops);
+	static const MachineInstOpcode movOps[] = { MachineInstOpcode::nop, MachineInstOpcode::nop, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
+
+	int dataSizeType = getDataSizeType(node->type);
+	if (dataSizeType == 5) // 8 bit multiply can only happen in ax register
+	{
+		auto dst = newReg(node);
+		emitInst(MachineInstOpcode::mov8, newPhysReg(RegisterName::rax), node->operand1, dataSizeType);
+		emitInst(MachineInstOpcode::imul8, node->operand2, dataSizeType);
+		emitInst(MachineInstOpcode::mov8, dst, newPhysReg(RegisterName::rax));
+	}
+	else
+	{
+		simpleBinaryInst(node, ops);
+	}
 }
 
 void MachineInstSelection::inst(IRInstFMul* node)
@@ -945,7 +958,15 @@ void MachineInstSelection::divBinaryInst(IRInstBinary* node, const MachineInstOp
 	}
 
 	// Move rax to dest
-	emitInst(movOps[dataSizeType], dst, newPhysReg(remainder ? RegisterName::rdx : RegisterName::rax));
+	if (dataSizeType != 5 || !remainder)
+	{
+		emitInst(movOps[dataSizeType], dst, newPhysReg(remainder ? RegisterName::rdx : RegisterName::rax));
+	}
+	else // for 8 bit the remainder is in ah
+	{
+		emitInst(MachineInstOpcode::shr16, newPhysReg(RegisterName::rax), newImm(8));
+		emitInst(MachineInstOpcode::mov8, dst, newPhysReg(RegisterName::rax));
+	}
 }
 
 void MachineInstSelection::addDebugInfo(MachineInst* inst)
