@@ -33,7 +33,7 @@ enum class MachineInstOpcode
 	cvtsd2ss, cvtss2sd,
 	cvttsd2si, cvttss2si,
 	cvtsi2sd, cvtsi2ss,
-	jmp, je,
+	jmp, je, jne,
 	call, ret, push, pop
 };
 
@@ -135,6 +135,10 @@ public:
 class MachineFunction
 {
 public:
+	MachineFunction() = default;
+	MachineFunction(std::string name) : name(std::move(name)) { }
+
+	std::string name;
 	IRFunctionType* type = nullptr;
 	MachineBasicBlock* prolog = nullptr;
 	MachineBasicBlock* epilog = nullptr;
