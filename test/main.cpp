@@ -226,6 +226,38 @@ public:
 		Test(name, create, run);
 	}
 
+	template<typename T>
+	void FPConstants(std::string name)
+	{
+		auto create = [=](IRContext* context)
+		{
+			IRType* type = GetIRType<T>(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(type, { type }), name);
+
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+			auto result = builder.CreateFMul(func->args[0], context->getConstantFloat(type, 1.0));
+			result = builder.CreateFMul(result, context->getConstantFloat(type, 2.0));
+			result = builder.CreateFMul(result, context->getConstantFloat(type, 3.0));
+			result = builder.CreateFMul(result, context->getConstantFloat(type, 4.0));
+			builder.CreateRet(result);
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<T(*)(T)>(jit->getPointerToFunction(name));
+
+			if ((ptr(T(10)) != T(10) * T(1) * T(2) * T(3) * T(4)))
+			{
+				ptr(T(10)); // for debug breakpoint
+				return false;
+			}
+			return true;
+		};
+
+		Test(name, create, run);
+	}
+
 	void Run()
 	{
 		std::cout << "Creating tests" << std::endl;
@@ -475,6 +507,9 @@ int main(int argc, char** argv)
 		tester.Store<uint64_t>("store_i64");
 		tester.Store<float>("store_float");
 		tester.Store<double>("store_double");
+
+		tester.FPConstants<float>("fpconstants_float");
+		tester.FPConstants<double>("fpconstants_double");
 
 		tester.Run();
 
