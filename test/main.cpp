@@ -258,6 +258,176 @@ public:
 		Test(name, create, run);
 	}
 
+	template<typename T>
+	void RegisterSpillI(std::string name)
+	{
+		int random[10] = { 5,8,2,4,1,0,4,5,7,3 };
+		auto create = [=](IRContext* context)
+		{
+			IRType* type = GetIRType<T>(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(type, { type, type, type, type }), name);
+
+			IRValue* alloca0 = func->createAlloca(type, context->getConstantInt(1), "alloca0");
+			IRValue* alloca1 = func->createAlloca(type, context->getConstantInt(1), "alloca1");
+			IRValue* alloca2 = func->createAlloca(type, context->getConstantInt(1), "alloca2");
+			IRValue* alloca3 = func->createAlloca(type, context->getConstantInt(1), "alloca3");
+
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+
+			builder.CreateStore(func->args[0], alloca0);
+			builder.CreateStore(func->args[1], alloca1);
+			builder.CreateStore(func->args[2], alloca2);
+			builder.CreateStore(func->args[3], alloca3);
+
+			std::vector<IRValue*> values = { func->args[0], func->args[1], func->args[2], func->args[3] };
+			for (int i = 0; i < 25; i++)
+			{
+				IRValue* result = values[0];
+				for (size_t j = 1; j < values.size(); j++)
+				{
+					result = builder.CreateAdd(result, values[(j + random[j % 10]) % values.size()]);
+				}
+				values.push_back(result);
+			}
+			auto bb = func->createBasicBlock("bb");
+			builder.CreateBr(bb);
+			builder.SetInsertPoint(bb);
+			for (int i = 0; i < 25; i++)
+			{
+				IRValue* result = values[0];
+				for (size_t j = 1; j < values.size(); j++)
+				{
+					result = builder.CreateAdd(result, values[(j + random[j % 10]) % values.size()]);
+				}
+				values.push_back(result);
+			}
+
+			IRValue* result = values.back();
+			result = builder.CreateAdd(result, builder.CreateLoad(alloca0));
+			result = builder.CreateAdd(result, builder.CreateLoad(alloca1));
+			result = builder.CreateAdd(result, builder.CreateLoad(alloca2));
+			result = builder.CreateAdd(result, builder.CreateLoad(alloca3));
+			builder.CreateRet(result);
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<T(*)(T, T, T, T)>(jit->getPointerToFunction(name));
+
+			std::vector<T> values = { T(1), T(2), T(3), T(4) };
+			for (int i = 0; i < 50; i++)
+			{
+				T result = values[0];
+				for (size_t j = 1; j < values.size(); j++)
+				{
+					result = result + values[(j + random[j % 10]) % values.size()];
+				}
+				values.push_back(result);
+			}
+
+			T result = values.back();
+			result += T(1);
+			result += T(2);
+			result += T(3);
+			result += T(4);
+
+			if (ptr(T(1), T(2), T(3), T(4)) != result)
+			{
+				ptr(T(1), T(2), T(3), T(4)); // for debug breakpoint
+				return false;
+			}
+			return true;
+		};
+
+		Test(name, create, run);
+	}
+
+	template<typename T>
+	void RegisterSpillF(std::string name)
+	{
+		int random[10] = { 5,8,2,4,1,0,4,5,7,3 };
+		auto create = [=](IRContext* context)
+		{
+			IRType* type = GetIRType<T>(context);
+			IRFunction* func = context->createFunction(context->getFunctionType(type, { type, type, type, type }), name);
+
+			IRValue* alloca0 = func->createAlloca(type, context->getConstantInt(1), "alloca0");
+			IRValue* alloca1 = func->createAlloca(type, context->getConstantInt(1), "alloca1");
+			IRValue* alloca2 = func->createAlloca(type, context->getConstantInt(1), "alloca2");
+			IRValue* alloca3 = func->createAlloca(type, context->getConstantInt(1), "alloca3");
+
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+
+			builder.CreateStore(func->args[0], alloca0);
+			builder.CreateStore(func->args[1], alloca1);
+			builder.CreateStore(func->args[2], alloca2);
+			builder.CreateStore(func->args[3], alloca3);
+
+			std::vector<IRValue*> values = { func->args[0], func->args[1], func->args[2], func->args[3] };
+			for (int i = 0; i < 25; i++)
+			{
+				IRValue* result = values[0];
+				for (size_t j = 1; j < values.size(); j++)
+				{
+					result = builder.CreateFAdd(result, values[(j + random[j%10])%values.size()]);
+				}
+				values.push_back(result);
+			}
+			auto bb = func->createBasicBlock("bb");
+			builder.CreateBr(bb);
+			builder.SetInsertPoint(bb);
+			for (int i = 0; i < 25; i++)
+			{
+				IRValue* result = values[0];
+				for (size_t j = 1; j < values.size(); j++)
+				{
+					result = builder.CreateFAdd(result, values[(j + random[j % 10]) % values.size()]);
+				}
+				values.push_back(result);
+			}
+
+			IRValue* result = values.back();
+			result = builder.CreateFAdd(result, builder.CreateLoad(alloca0));
+			result = builder.CreateFAdd(result, builder.CreateLoad(alloca1));
+			result = builder.CreateFAdd(result, builder.CreateLoad(alloca2));
+			result = builder.CreateFAdd(result, builder.CreateLoad(alloca3));
+			builder.CreateRet(result);
+		};
+
+		auto run = [=](JITRuntime* jit)
+		{
+			auto ptr = reinterpret_cast<T(*)(T,T,T,T)>(jit->getPointerToFunction(name));
+
+			std::vector<T> values = { T(1), T(2), T(3), T(4) };
+			for (int i = 0; i < 50; i++)
+			{
+				T result = values[0];
+				for (size_t j = 1; j < values.size(); j++)
+				{
+					result = result + values[(j + random[j % 10]) % values.size()];
+				}
+				values.push_back(result);
+			}
+
+			T result = values.back();
+			result += T(1);
+			result += T(2);
+			result += T(3);
+			result += T(4);
+
+			if (ptr(T(1), T(2), T(3), T(4)) != result)
+			{
+				ptr(T(1), T(2), T(3), T(4)); // for debug breakpoint
+				return false;
+			}
+			return true;
+		};
+
+		Test(name, create, run);
+	}
+
 	void Run()
 	{
 		std::cout << "Creating tests" << std::endl;
@@ -510,6 +680,13 @@ int main(int argc, char** argv)
 
 		tester.FPConstants<float>("fpconstants_float");
 		tester.FPConstants<double>("fpconstants_double");
+
+		tester.RegisterSpillI<uint8_t>("registerspill_i8");
+		tester.RegisterSpillI<uint16_t>("registerspill_i16");
+		tester.RegisterSpillI<uint32_t>("registerspill_i32");
+		tester.RegisterSpillI<uint64_t>("registerspill_i64");
+		tester.RegisterSpillF<float>("registerspill_float");
+		tester.RegisterSpillF<double>("registerspill_double");
 
 		tester.Run();
 
