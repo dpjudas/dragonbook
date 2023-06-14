@@ -486,7 +486,10 @@ void MachineInstSelection::inst(IRInstUIToFP* node)
 	if (isConstantInt(node->value))
 	{
 		auto dst = newReg(node);
-		emitInst(movOps[dstDataSizeType], dst, node->value, dstDataSizeType);
+		if (dstDataSizeType == 0)
+			emitInst(movOps[dstDataSizeType], dst, newConstant((double)getConstantValueInt(node->value)));
+		else // if (dstDataSizeType == 1)
+			emitInst(movOps[dstDataSizeType], dst, newConstant((float)getConstantValueInt(node->value)));
 	}
 	else if (srcDataSizeType != 2) // zero extend required
 	{
@@ -514,7 +517,10 @@ void MachineInstSelection::inst(IRInstSIToFP* node)
 	if (isConstantInt(node->value))
 	{
 		auto dst = newReg(node);
-		emitInst(movOps[dstDataSizeType], dst, node->value, dstDataSizeType);
+		if (dstDataSizeType == 0)
+			emitInst(movOps[dstDataSizeType], dst, newConstant((double)(int64_t)getConstantValueInt(node->value)));
+		else // if (dstDataSizeType == 1)
+			emitInst(movOps[dstDataSizeType], dst, newConstant((float)(int64_t)getConstantValueInt(node->value)));
 	}
 	else if (srcDataSizeType != dstDataSizeType + 2) // sign extend required
 	{
@@ -1286,6 +1292,16 @@ MachineFunction* MachineInstSelection::dumpinstructions(IRFunction* sfunc)
 		RegisterName::xmm12, RegisterName::xmm13, RegisterName::xmm14, RegisterName::xmm15
 	};
 
+	std::vector<MachineInstOpcode> xmmBinaryOps =
+	{
+		MachineInstOpcode::movss, MachineInstOpcode::movsd,
+		MachineInstOpcode::addss, MachineInstOpcode::addsd,
+		MachineInstOpcode::subss, MachineInstOpcode::subsd,
+		MachineInstOpcode::mulss, MachineInstOpcode::mulsd,
+		MachineInstOpcode::divss, MachineInstOpcode::divsd,
+		MachineInstOpcode::ucomiss, MachineInstOpcode::ucomisd
+	};
+
 	std::vector<MachineInstOpcode> intBinaryOps =
 	{
 		MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8,
@@ -1332,7 +1348,140 @@ MachineFunction* MachineInstSelection::dumpinstructions(IRFunction* sfunc)
 	// Load/store tests:
 
 	// Register/register tests:
+
+	for (MachineInstOpcode opcode : { MachineInstOpcode::cvtsd2ss, MachineInstOpcode::cvtss2sd })
+	{
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)regname;
+			operand2.registerIndex = (int)RegisterName::xmm0;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)RegisterName::xmm0;
+			operand2.registerIndex = (int)regname;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+	}
+
+	for (MachineInstOpcode opcode : { MachineInstOpcode::cvttsd2si, MachineInstOpcode::cvttss2si })
+	{
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)RegisterName::rax;
+			operand2.registerIndex = (int)regname;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)RegisterName::r15;
+			operand2.registerIndex = (int)regname;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+
+		for (RegisterName regname : gpRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)regname;
+			operand2.registerIndex = (int)RegisterName::xmm0;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+
+		for (RegisterName regname : gpRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)regname;
+			operand2.registerIndex = (int)RegisterName::xmm15;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+	}
+
+	for (MachineInstOpcode opcode : { MachineInstOpcode::cvtsi2sd, MachineInstOpcode::cvtsi2ss })
+	{
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)regname;
+			operand2.registerIndex = (int)RegisterName::rax;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)regname;
+			operand2.registerIndex = (int)RegisterName::r15;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+
+		for (RegisterName regname : gpRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)RegisterName::xmm0;
+			operand2.registerIndex = (int)regname;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+
+		for (RegisterName regname : gpRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)RegisterName::xmm15;
+			operand2.registerIndex = (int)regname;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+	}
+
 /*
+	for (MachineInstOpcode opcode : xmmBinaryOps)
+	{
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)regname;
+			operand2.registerIndex = (int)RegisterName::xmm0;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1, operand2;
+			operand1.type = MachineOperandType::reg;
+			operand2.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)RegisterName::xmm0;
+			operand2.registerIndex = (int)regname;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+	}
+
 	for (MachineInstOpcode opcode : intUnaryOps)
 	{
 		for (RegisterName regname : gpRegs)
@@ -1413,8 +1562,21 @@ MachineFunction* MachineInstSelection::dumpinstructions(IRFunction* sfunc)
 			selection.emitInst(opcode, operand1, operand2);
 		}
 	}
-*/
+
 	// Register/constant tests:
+
+	int opcodeindex = 0;
+	for (MachineInstOpcode opcode : xmmBinaryOps)
+	{
+		MachineOperand operand2 = (opcodeindex++ % 2 == 1) ? selection.newConstant(1.234) : selection.newConstant(1.234f);
+		for (RegisterName regname : xmmRegs)
+		{
+			MachineOperand operand1;
+			operand1.type = MachineOperandType::reg;
+			operand1.registerIndex = (int)regname;
+			selection.emitInst(opcode, operand1, operand2);
+		}
+	}
 
 	for (MachineInstOpcode opcode : intBinaryOps)
 	{
@@ -1439,7 +1601,7 @@ MachineFunction* MachineInstSelection::dumpinstructions(IRFunction* sfunc)
 			selection.emitInst(opcode, operand1, operand2);
 		}
 	}
-
+*/
 	// Register/global tests:
 
 
