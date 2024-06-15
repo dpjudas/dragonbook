@@ -159,6 +159,38 @@ public:
 	}
 
 	template<typename T>
+	void NaNTest(std::string name, std::function<IRValue* (IRBuilder*, IRValue*, IRValue*)> codegen, std::function<bool(T, T)> cppversion)
+	{
+		auto create = [=](IRContext* context)
+			{
+				IRType* type = GetIRType<T>(context);
+				IRFunction* func = context->createFunction(context->getFunctionType(context->getInt1Ty(), { type, type }), name);
+
+				IRBuilder builder;
+				builder.SetInsertPoint(func->createBasicBlock("entry"));
+				builder.CreateRet(codegen(&builder, func->args[0], func->args[1]));
+			};
+
+		auto run = [=](JITRuntime* jit)
+			{
+				auto ptr = reinterpret_cast<int8_t(*)(T, T)>(jit->getPointerToFunction(name));
+				for (int i = 0; i < 10; i++)
+				{
+					auto a = RandomValue<T>();
+					auto b = std::numeric_limits<T>::quiet_NaN();
+					if ((ptr(a, b) != (int8_t)cppversion(a, b)))
+					{
+						ptr(a, b); // for debug breakpoint
+						return false;
+					}
+				}
+				return true;
+			};
+
+		Test(name, create, run);
+	}
+
+	template<typename T>
 	void Load(std::string name)
 	{
 		auto create = [=](IRContext* context)
@@ -663,6 +695,20 @@ int main(int argc, char** argv)
 		tester.Compare<double>("fcmpuge_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGE(a, b); }, [](double a, double b) { return a >= b; });
 		tester.Compare<double>("fcmpueq_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUEQ(a, b); }, [](double a, double b) { return a == b; });
 		tester.Compare<double>("fcmpune_double", [](auto cc, auto a, auto b) { return cc->CreateFCmpUNE(a, b); }, [](double a, double b) { return a != b; });
+
+		tester.NaNTest<float>("fcmpult_float_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpULT(a, b); }, [](float a, float b) { return a < b; });
+		tester.NaNTest<float>("fcmpugt_float_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGT(a, b); }, [](float a, float b) { return a > b; });
+		tester.NaNTest<float>("fcmpule_float_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpULE(a, b); }, [](float a, float b) { return a <= b; });
+		tester.NaNTest<float>("fcmpuge_float_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGE(a, b); }, [](float a, float b) { return a >= b; });
+		tester.NaNTest<float>("fcmpueq_float_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpUEQ(a, b); }, [](float a, float b) { return a == b; });
+		tester.NaNTest<float>("fcmpune_float_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpUNE(a, b); }, [](float a, float b) { return a != b; });
+
+		tester.NaNTest<double>("fcmpult_double_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpULT(a, b); }, [](double a, double b) { return a < b; });
+		tester.NaNTest<double>("fcmpugt_double_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGT(a, b); }, [](double a, double b) { return a > b; });
+		tester.NaNTest<double>("fcmpule_double_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpULE(a, b); }, [](double a, double b) { return a <= b; });
+		tester.NaNTest<double>("fcmpuge_double_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpUGE(a, b); }, [](double a, double b) { return a >= b; });
+		tester.NaNTest<double>("fcmpueq_double_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpUEQ(a, b); }, [](double a, double b) { return a == b; });
+		tester.NaNTest<double>("fcmpune_double_NaN", [](auto cc, auto a, auto b) { return cc->CreateFCmpUNE(a, b); }, [](double a, double b) { return a != b; });
 
 		tester.Load<uint8_t>("load_i8");
 		tester.Load<uint16_t>("load_i16");

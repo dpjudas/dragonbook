@@ -286,7 +286,7 @@ void MachineInstSelection::inst(IRInstICmpULT* node)
 
 void MachineInstSelection::inst(IRInstFCmpULT* node)
 {
-	simpleCompareInst(node, MachineInstOpcode::setb);
+	simpleCompareInst(node, MachineInstOpcode::setb, MachineInstOpcode::setnp, MachineInstOpcode::and8);
 }
 
 void MachineInstSelection::inst(IRInstICmpSGT* node)
@@ -301,7 +301,7 @@ void MachineInstSelection::inst(IRInstICmpUGT* node)
 
 void MachineInstSelection::inst(IRInstFCmpUGT* node)
 {
-	simpleCompareInst(node, MachineInstOpcode::seta);
+	simpleCompareInst(node, MachineInstOpcode::seta, MachineInstOpcode::setnp, MachineInstOpcode::and8);
 }
 
 void MachineInstSelection::inst(IRInstICmpSLE* node)
@@ -316,7 +316,7 @@ void MachineInstSelection::inst(IRInstICmpULE* node)
 
 void MachineInstSelection::inst(IRInstFCmpULE* node)
 {
-	simpleCompareInst(node, MachineInstOpcode::setbe);
+	simpleCompareInst(node, MachineInstOpcode::setbe, MachineInstOpcode::setnp, MachineInstOpcode::and8);
 }
 
 void MachineInstSelection::inst(IRInstICmpSGE* node)
@@ -331,7 +331,7 @@ void MachineInstSelection::inst(IRInstICmpUGE* node)
 
 void MachineInstSelection::inst(IRInstFCmpUGE* node)
 {
-	simpleCompareInst(node, MachineInstOpcode::setae);
+	simpleCompareInst(node, MachineInstOpcode::setae, MachineInstOpcode::setnp, MachineInstOpcode::and8);
 }
 
 void MachineInstSelection::inst(IRInstICmpEQ* node)
@@ -341,7 +341,7 @@ void MachineInstSelection::inst(IRInstICmpEQ* node)
 
 void MachineInstSelection::inst(IRInstFCmpUEQ* node)
 {
-	simpleCompareInst(node, MachineInstOpcode::sete);
+	simpleCompareInst(node, MachineInstOpcode::sete, MachineInstOpcode::setnp, MachineInstOpcode::and8);
 }
 
 void MachineInstSelection::inst(IRInstICmpNE* node)
@@ -351,7 +351,7 @@ void MachineInstSelection::inst(IRInstICmpNE* node)
 
 void MachineInstSelection::inst(IRInstFCmpUNE* node)
 {
-	simpleCompareInst(node, MachineInstOpcode::setne);
+	simpleCompareInst(node, MachineInstOpcode::setne, MachineInstOpcode::setp, MachineInstOpcode::or8);
 }
 
 void MachineInstSelection::inst(IRInstAnd* node)
@@ -853,7 +853,7 @@ void MachineInstSelection::callUnix64(IRInstCall* node)
 	}
 }
 
-void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpcode opSet)
+void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpcode opSet, MachineInstOpcode opSet2, MachineInstOpcode opSet3)
 {
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 	static const MachineInstOpcode cmpOps[] = { MachineInstOpcode::ucomisd, MachineInstOpcode::ucomiss, MachineInstOpcode::cmp64, MachineInstOpcode::cmp32, MachineInstOpcode::cmp16, MachineInstOpcode::cmp8 };
@@ -890,8 +890,18 @@ void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpco
 		emitInst(cmpOps[dataSizeType], src1, node->operand2, dataSizeType);
 	}
 
-	// Move result flag to register
-	emitInst(opSet, dst);
+	if (opSet2 == MachineInstOpcode::nop)
+	{
+		// Move result flag to register
+		emitInst(opSet, dst);
+	}
+	else
+	{
+		auto temp = newTempReg(MachineRegClass::xmm);
+		emitInst(opSet, temp);
+		emitInst(opSet2, dst);
+		emitInst(opSet3, dst, temp);
+	}
 }
 
 void MachineInstSelection::simpleBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps)
