@@ -897,7 +897,7 @@ void MachineInstSelection::simpleCompareInst(IRInstBinary* node, MachineInstOpco
 	}
 	else
 	{
-		auto temp = newTempReg(MachineRegClass::xmm);
+		auto temp = newTempReg(MachineRegClass::gp);
 		emitInst(opSet, temp);
 		emitInst(opSet2, dst);
 		emitInst(opSet3, dst, temp);
