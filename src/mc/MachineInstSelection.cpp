@@ -76,6 +76,18 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 	for (size_t i = 0; i < sfunc->basicBlocks.size(); i++)
 	{
 		IRBasicBlock* bb = sfunc->basicBlocks[i];
+		for (IRInst* inst : bb->code)
+		{
+			IRInstPhi* phi = dynamic_cast<IRInstPhi*>(inst);
+			if (!phi)
+				break;
+			selection.newReg(phi);
+		}
+	}
+
+	for (size_t i = 0; i < sfunc->basicBlocks.size(); i++)
+	{
+		IRBasicBlock* bb = sfunc->basicBlocks[i];
 		selection.bb = selection.bbMap[bb];
 		selection.irbb = bb;
 		for (IRInst* node : bb->code)
@@ -663,23 +675,31 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 
 void MachineInstSelection::inst(IRInstPhi* node)
 {
-	// To do: load phi value
+	// Handled in MachineInstSelection::codegen
 }
 
 void MachineInstSelection::emitPhi(IRBasicBlock* target)
 {
+	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
+
 	for (IRInst* inst : target->code)
 	{
 		IRInstPhi* phi = dynamic_cast<IRInstPhi*>(inst);
 		if (!phi)
 			break;
 
+		int dataSizeType = getDataSizeType(phi->type);
+
 		for (auto& incoming : phi->values)
 		{
 			if (irbb == incoming.first)
 			{
 				IRValue* value = incoming.second;
-				// To do: store phi value
+
+				MachineOperand dst = instRegister[phi];
+				emitInst(movOps[dataSizeType], dst, value, dataSizeType);
+
+				break;
 			}
 		}
 	}
