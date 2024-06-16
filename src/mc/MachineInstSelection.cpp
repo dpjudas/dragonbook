@@ -61,6 +61,7 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 	}
 
 	selection.bb = selection.bbMap[sfunc->basicBlocks[0]];
+	selection.irbb = sfunc->basicBlocks[0];
 	for (size_t i = 0; i < sfunc->stackVars.size(); i++)
 	{
 		IRInstAlloca* node = sfunc->stackVars[i];
@@ -76,6 +77,7 @@ MachineFunction* MachineInstSelection::codegen(IRFunction* sfunc)
 	{
 		IRBasicBlock* bb = sfunc->basicBlocks[i];
 		selection.bb = selection.bbMap[bb];
+		selection.irbb = bb;
 		for (IRInst* node : bb->code)
 		{
 			selection.debugInfoInst = node;
@@ -588,6 +590,7 @@ void MachineInstSelection::inst(IRInstGEP* node)
 
 void MachineInstSelection::inst(IRInstBr* node)
 {
+	emitPhi(node->bb);
 	emitInst(MachineInstOpcode::jmp, node->bb);
 }
 
@@ -596,12 +599,20 @@ void MachineInstSelection::inst(IRInstCondBr* node)
 	if (isConstant(node->condition))
 	{
 		if (getConstantValueInt(node->condition))
+		{
+			emitPhi(node->bb1);
 			emitInst(MachineInstOpcode::jmp, node->bb1);
+		}
 		else
+		{
+			emitPhi(node->bb2);
 			emitInst(MachineInstOpcode::jmp, node->bb2);
+		}
 	}
 	else
 	{
+		emitPhi(node->bb1);
+		emitPhi(node->bb2);
 		emitInst(MachineInstOpcode::cmp8, node->condition, 3, newImm(1));
 		emitInst(MachineInstOpcode::jne, node->bb2);
 		emitInst(MachineInstOpcode::jmp, node->bb1);
@@ -648,6 +659,30 @@ void MachineInstSelection::inst(IRInstAlloca* node)
 
 	mfunc->dynamicStackAllocations = true;
 	mfunc->registers[(int)RegisterName::rbp].cls = MachineRegClass::reserved;
+}
+
+void MachineInstSelection::inst(IRInstPhi* node)
+{
+	// To do: load phi value
+}
+
+void MachineInstSelection::emitPhi(IRBasicBlock* target)
+{
+	for (IRInst* inst : target->code)
+	{
+		IRInstPhi* phi = dynamic_cast<IRInstPhi*>(inst);
+		if (!phi)
+			break;
+
+		for (auto& incoming : phi->values)
+		{
+			if (irbb == incoming.first)
+			{
+				IRValue* value = incoming.second;
+				// To do: store phi value
+			}
+		}
+	}
 }
 
 int MachineInstSelection::getDataSizeType(IRType* type)

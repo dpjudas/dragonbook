@@ -347,6 +347,12 @@ private:
 	{
 		checkPromote(node->arraySize);
 	}
+
+	void inst(IRInstPhi* node) override
+	{
+		for (auto& value : node->values)
+			checkPromote(value.second);
+	}
 };
 
 class IRPromoteRegisters : IRInstVisitor
@@ -778,6 +784,13 @@ private:
 	void inst(IRInstAlloca* node) override
 	{
 		checkPromote(node->arraySize);
+		code.push_back(node);
+	}
+
+	void inst(IRInstPhi* node) override
+	{
+		for (auto& value : node->values)
+			checkPromote(value.second);
 		code.push_back(node);
 	}
 };
