@@ -746,8 +746,8 @@ void MachineInstSelection::callWin64(IRInstCall* node)
 	static const MachineInstOpcode movOps[] = { MachineInstOpcode::movsd, MachineInstOpcode::movss, MachineInstOpcode::mov64, MachineInstOpcode::mov32, MachineInstOpcode::mov16, MachineInstOpcode::mov8 };
 	static const RegisterName regvars[] = { RegisterName::rcx, RegisterName::rdx, RegisterName::r8, RegisterName::r9 };
 
-	// Move arguments into place
-	for (size_t i = 0; i < node->args.size(); i++)
+	// Move arguments into stack slots
+	for (size_t i = 4, count = node->args.size(); i < count; i++)
 	{
 		IRValue* arg = node->args[i];
 
@@ -756,41 +756,45 @@ void MachineInstSelection::callWin64(IRInstCall* node)
 		bool isXmm = dataSizeType < 2;
 		bool needs64BitImm = (dataSizeType == 2) && isConstantInt(arg) && (getConstantValueInt(arg) < -0x7fffffff || getConstantValueInt(arg) > 0x7fffffff);
 
-		// First four go to registers
-		if (i < 4)
-		{
-			MachineOperand dst;
-			dst.type = MachineOperandType::reg;
-			if (isXmm)
-				dst.registerIndex = (int)RegisterName::xmm0 + (int)i;
-			else
-				dst.registerIndex = (int)regvars[i];
+		MachineOperand dst;
+		dst.type = MachineOperandType::stackOffset;
+		dst.stackOffset = (int)(i * 8);
 
-			emitInst(isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType], dst, arg, dataSizeType);
+		if (isMemSrc)
+		{
+			MachineOperand tmpreg = newPhysReg(isXmm ? RegisterName::xmm0 : RegisterName::rax);
+			emitInst(loadOps[dataSizeType], tmpreg, arg, dataSizeType);
+			emitInst(storeOps[dataSizeType], dst, tmpreg);
+		}
+		else if (needs64BitImm)
+		{
+			MachineOperand tmpreg = newPhysReg(RegisterName::rax);
+			emitInst(movOps[dataSizeType], tmpreg, arg, dataSizeType);
+			emitInst(storeOps[dataSizeType], dst, tmpreg);
 		}
 		else
 		{
-			MachineOperand dst;
-			dst.type = MachineOperandType::stackOffset;
-			dst.stackOffset = (int)(i * 8);
-
-			if (isMemSrc)
-			{
-				MachineOperand tmpreg = newPhysReg(isXmm ? RegisterName::xmm0 : RegisterName::rax);
-				emitInst(loadOps[dataSizeType], tmpreg, arg, dataSizeType);
-				emitInst(storeOps[dataSizeType], dst, tmpreg);
-			}
-			else if (needs64BitImm)
-			{
-				MachineOperand tmpreg = newPhysReg(RegisterName::rax);
-				emitInst(movOps[dataSizeType], tmpreg, arg, dataSizeType);
-				emitInst(storeOps[dataSizeType], dst, tmpreg);
-			}
-			else
-			{
-				emitInst(storeOps[dataSizeType], dst, arg, dataSizeType);
-			}
+			emitInst(storeOps[dataSizeType], dst, arg, dataSizeType);
 		}
+	}
+
+	// First four go to registers
+	for (size_t i = 0, count = std::min((size_t)4, node->args.size()); i < count; i++)
+	{
+		IRValue* arg = node->args[i];
+
+		bool isMemSrc = isConstantFP(arg) || isGlobalVariable(arg);
+		int dataSizeType = getDataSizeType(arg->type);
+		bool isXmm = dataSizeType < 2;
+
+		MachineOperand dst;
+		dst.type = MachineOperandType::reg;
+		if (isXmm)
+			dst.registerIndex = (int)RegisterName::xmm0 + (int)i;
+		else
+			dst.registerIndex = (int)regvars[i];
+
+		emitInst(isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType], dst, arg, dataSizeType);
 	}
 
 	// Call the function
@@ -833,49 +837,53 @@ void MachineInstSelection::callUnix64(IRInstCall* node)
 	int nextRegisterArg = 0;
 	int nextXmmRegisterArg = 0;
 
-	// Move arguments into place
-	for (size_t i = 0; i < node->args.size(); i++)
+	// Move arguments into place (stack slots first pass, register slots second pass)
+	for (int pass = 0; pass < 2; pass++)
 	{
-		IRValue* arg = node->args[i];
-
-		bool isMemSrc = isConstantFP(arg) || isGlobalVariable(arg);
-		int dataSizeType = getDataSizeType(arg->type);
-		bool isXmm = dataSizeType < 2;
-		bool isRegisterArg = (isXmm && nextXmmRegisterArg < numXmmRegisterArgs) || (!isXmm && nextRegisterArg < numRegisterArgs);
-		bool needs64BitImm = (dataSizeType == 2) && isConstantInt(arg) && (getConstantValueInt(arg) < -0x7fffffffffff || getConstantValueInt(arg) > 0x7fffffffffff);
-
-		if (isRegisterArg)
+		bool isRegisterPass = (pass == 1);
+		for (size_t i = 0; i < node->args.size(); i++)
 		{
-			MachineOperand dst;
-			dst.type = MachineOperandType::reg;
-			if (isXmm)
-				dst.registerIndex = (int)RegisterName::xmm0 + (nextXmmRegisterArg++);
-			else
-				dst.registerIndex = (int)regvars[nextRegisterArg++];
+			IRValue* arg = node->args[i];
 
-			emitInst(isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType], dst, arg, dataSizeType);
-		}
-		else
-		{
-			MachineOperand dst;
-			dst.type = MachineOperandType::stackOffset;
-			dst.stackOffset = (int)(i * 8);
+			bool isMemSrc = isConstantFP(arg) || isGlobalVariable(arg);
+			int dataSizeType = getDataSizeType(arg->type);
+			bool isXmm = dataSizeType < 2;
+			bool isRegisterArg = (isXmm && nextXmmRegisterArg < numXmmRegisterArgs) || (!isXmm && nextRegisterArg < numRegisterArgs);
+			bool needs64BitImm = (dataSizeType == 2) && isConstantInt(arg) && (getConstantValueInt(arg) < -0x7fffffffffff || getConstantValueInt(arg) > 0x7fffffffffff);
 
-			if (isMemSrc)
+			if (isRegisterPass && isRegisterArg)
 			{
-				MachineOperand tmpreg = newPhysReg(isXmm ? RegisterName::xmm0 : RegisterName::rax);
-				emitInst(loadOps[dataSizeType], tmpreg, arg, dataSizeType);
-				emitInst(storeOps[dataSizeType], dst, tmpreg);
+				MachineOperand dst;
+				dst.type = MachineOperandType::reg;
+				if (isXmm)
+					dst.registerIndex = (int)RegisterName::xmm0 + (nextXmmRegisterArg++);
+				else
+					dst.registerIndex = (int)regvars[nextRegisterArg++];
+
+				emitInst(isMemSrc ? loadOps[dataSizeType] : movOps[dataSizeType], dst, arg, dataSizeType);
 			}
-			else if (needs64BitImm)
+			else if (!isRegisterPass)
 			{
-				MachineOperand tmpreg = newPhysReg(RegisterName::rax);
-				emitInst(movOps[dataSizeType], tmpreg, arg, dataSizeType);
-				emitInst(storeOps[dataSizeType], dst, tmpreg);
-			}
-			else
-			{
-				emitInst(storeOps[dataSizeType], dst, arg, dataSizeType);
+				MachineOperand dst;
+				dst.type = MachineOperandType::stackOffset;
+				dst.stackOffset = (int)(i * 8);
+
+				if (isMemSrc)
+				{
+					MachineOperand tmpreg = newPhysReg(isXmm ? RegisterName::xmm0 : RegisterName::rax);
+					emitInst(loadOps[dataSizeType], tmpreg, arg, dataSizeType);
+					emitInst(storeOps[dataSizeType], dst, tmpreg);
+				}
+				else if (needs64BitImm)
+				{
+					MachineOperand tmpreg = newPhysReg(RegisterName::rax);
+					emitInst(movOps[dataSizeType], tmpreg, arg, dataSizeType);
+					emitInst(storeOps[dataSizeType], dst, tmpreg);
+				}
+				else
+				{
+					emitInst(storeOps[dataSizeType], dst, arg, dataSizeType);
+				}
 			}
 		}
 	}
