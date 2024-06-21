@@ -25,21 +25,22 @@ set(LIB_SOURCES
 	jit/NativeSymbolResolver.h
 	jit/StackTrace.cpp
 	jit/StackTrace.h
-	mc/RegisterAllocator.cpp
-	mc/RegisterAllocator.h
-	mc/MachineInstSelection.cpp
-	mc/MachineInstSelection.h
 	mc/MachineInst.h
+	mc/MachineInstX64.h
 	mc/MachineCodeHolder.cpp
 	mc/MachineCodeHolder.h
-	mc/MachineCodeWriter.cpp
-	mc/MachineCodeWriter.h
-	mc/AssemblyWriter.cpp
-	mc/AssemblyWriter.h
-	mc/UnwindInfoUnix.cpp
-	mc/UnwindInfoUnix.h
-	mc/UnwindInfoWindows.cpp
-	mc/UnwindInfoWindows.h
+	mc/RegisterAllocatorX64.cpp
+	mc/RegisterAllocatorX64.h
+	mc/MachineInstSelectionX64.cpp
+	mc/MachineInstSelectionX64.h
+	mc/MachineCodeWriterX64.cpp
+	mc/MachineCodeWriterX64.h
+	mc/AssemblyWriterX64.cpp
+	mc/AssemblyWriterX64.h
+	mc/UnwindInfoUnixX64.cpp
+	mc/UnwindInfoUnixX64.h
+	mc/UnwindInfoWindowsX64.cpp
+	mc/UnwindInfoWindowsX64.h
 )
 
 set(LIB_LIBS

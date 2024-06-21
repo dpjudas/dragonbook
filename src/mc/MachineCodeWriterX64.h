@@ -1,16 +1,17 @@
 #pragma once
 
 #include "dragonbook/IR.h"
-#include "MachineInst.h"
-#include <sstream>
+#include "MachineInstX64.h"
 
-class AssemblyWriter
+class MachineCodeHolder;
+
+class MachineCodeWriterX64
 {
 public:
-	AssemblyWriter(MachineFunction* sfunc) : sfunc(sfunc) { }
+	MachineCodeWriterX64(MachineCodeHolder *codeholder, MachineFunction* sfunc) : codeholder(codeholder), sfunc(sfunc) { }
 	void codegen();
 
-	std::ostringstream output;
+	MachineFunction* getFunc() const { return sfunc; }
 
 private:
 	void basicblock(MachineBasicBlock* bb);
@@ -154,13 +155,71 @@ private:
 	bool isFunction(IRType* type) const { return dynamic_cast<IRFunctionType*>(type); }
 	bool isStruct(IRType* type) const { return dynamic_cast<IRStructType*>(type); }
 
-	enum class OperandSize { int64, int32, int16, int8 };
-	void writeInst(const char* name, MachineInst* inst, int ptrindex = -1);
+	struct OpFlags
+	{
+		enum
+		{
+			Rex = 1,
+			RexW = 2,
+			SizeOverride = 4, // 0x66
+			NP = 8 // No additional prefixes allowed
+		};
+	};
 
-	const char* getBasicBlockName(MachineBasicBlock* bb);
-	void setBasicBlockName(MachineBasicBlock* bb, int nameIndex);
+	void emitInstZO(int flags, int opcode);
+	void emitInstO(int flags, int opcode, MachineInst* inst);
+	void emitInstOI(int flags, int opcode, int immsize, MachineInst* inst);
+	void emitInstMI(int flags, int opcode, int immsize, MachineInst* inst, bool memptr = false);
+	void emitInstMI(int flags, int opcode, int modopcode, int immsize, MachineInst* inst, bool memptr = false);
+	void emitInstMR(int flags, int opcode, MachineInst* inst, bool memptr = false);
+	void emitInstM(int flags, int opcode, MachineInst* inst, bool memptr = false);
+	void emitInstM(int flags, int opcode, int modopcode, MachineInst* inst, bool memptr = false);
+	void emitInstM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr = false);
+	void emitInstM(int flags, std::initializer_list<int> opcode, int modopcode, MachineInst* inst, bool memptr = false);
+	void emitInstMC(int flags, int opcode, MachineInst* inst, bool memptr = false);
+	void emitInstMC(int flags, int opcode, int modopcode, MachineInst* inst, bool memptr = false);
+	void emitInstRM(int flags, int opcode, MachineInst* inst, bool memptr = false);
+	void emitInstRM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr = false);
+	void emitInstRMI(int flags, int opcode, int immsize, MachineInst* inst, bool memptr = false);
+	void emitInstSSE_RM(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr = false);
+	void emitInstSSE_MR(int flags, std::initializer_list<int> opcode, MachineInst* inst, bool memptr = false);
 
-	std::map<MachineBasicBlock*, std::string> bbNames;
+	struct X64Instruction
+	{
+		// ModR/M:
+		int mod = 0;
+		int modreg = 0;
+		int rm = 0;
 
+		// SIB:
+		int scale = 0;
+		int index = 0;
+		int base = 0;
+		bool sib = false;
+
+		// Disp:
+		int32_t disp = 0;
+		int dispsize = 0;
+
+		// Immediate:
+		uint64_t imm;
+		int immsize = 0;
+	};
+
+	void setM(X64Instruction& x64inst, const MachineOperand& operand, bool memptr);
+	void setI(X64Instruction& x64inst, int immsize, const MachineOperand& operand);
+	void setR(X64Instruction& x64inst, const MachineOperand& operand);
+	void setR(X64Instruction& x64inst, int modopcode);
+
+	void writeInst(int flags, std::initializer_list<int> opcode, const X64Instruction& x64inst, MachineInst* debugInfo);
+	void writeOpcode(int flags, std::initializer_list<int> opcode, int rexR, int rexX, int rexB);
+	void writeModRM(int mod, int modreg, int rm);
+	void writeSIB(int scale, int index, int base);
+	void writeImm(int immsize, uint64_t value);
+
+	static int getPhysReg(const MachineOperand& operand);
+
+	MachineCodeHolder* codeholder;
 	MachineFunction* sfunc;
+	size_t funcBeginAddress = 0;
 };

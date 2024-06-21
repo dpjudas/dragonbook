@@ -1,10 +1,10 @@
 
 #include "MachineCodeHolder.h"
-#include "MachineCodeWriter.h"
-#include "MachineInstSelection.h"
-#include "RegisterAllocator.h"
-#include "UnwindInfoWindows.h"
-#include "UnwindInfoUnix.h"
+#include "MachineCodeWriterX64.h"
+#include "MachineInstSelectionX64.h"
+#include "RegisterAllocatorX64.h"
+#include "UnwindInfoWindowsX64.h"
+#include "UnwindInfoUnixX64.h"
 
 void MachineCodeHolder::addFunction(IRFunction* func)
 {
@@ -15,25 +15,25 @@ void MachineCodeHolder::addFunction(IRFunction* func)
 		entry.beginAddress = code.size();
 
 #if 0 // for checking if the machine code actually matches with a disassembler
-		MachineFunction* mcfunc = MachineInstSelection::dumpinstructions(func);
+		MachineFunction* mcfunc = MachineInstSelectionX64::dumpinstructions(func);
 #else
-		MachineFunction* mcfunc = MachineInstSelection::codegen(func);
-		RegisterAllocator::run(func->context, mcfunc);
+		MachineFunction* mcfunc = MachineInstSelectionX64::codegen(func);
+		RegisterAllocatorX64::run(func->context, mcfunc);
 #endif
 
-		MachineCodeWriter mcwriter(this, mcfunc);
+		MachineCodeWriterX64 mcwriter(this, mcfunc);
 		mcwriter.codegen();
 
 		entry.endAddress = code.size();
 
 #ifdef WIN32
-		std::vector<uint16_t> data = UnwindInfoWindows::create(mcfunc);
+		std::vector<uint16_t> data = UnwindInfoWindowsX64::create(mcfunc);
 		entry.beginUnwindData = unwindData.size();
 		unwindData.resize(unwindData.size() + data.size() * sizeof(uint16_t));
 		memcpy(unwindData.data() + entry.beginUnwindData, data.data(), data.size() * sizeof(uint16_t));
 		entry.endUnwindData = unwindData.size();
 #else
-		std::vector<uint8_t> data = UnwindInfoUnix::create(mcfunc, entry.unixUnwindFunctionStart);
+		std::vector<uint8_t> data = UnwindInfoUnixX64::create(mcfunc, entry.unixUnwindFunctionStart);
 		entry.beginUnwindData = unwindData.size();
 		unwindData.resize(unwindData.size() + data.size());
 		memcpy(unwindData.data() + entry.beginUnwindData, data.data(), data.size());

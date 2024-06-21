@@ -1,15 +1,15 @@
 #pragma once
 
-#include "MachineInst.h"
+#include "MachineInstX64.h"
 
-class MachineInstSelection : IRInstVisitor
+class MachineInstSelectionX64 : IRInstVisitor
 {
 public:
 	static MachineFunction *codegen(IRFunction* function);
 	static MachineFunction* dumpinstructions(IRFunction* function);
 
 private:
-	MachineInstSelection(IRFunction* sfunc) : context(sfunc->context), sfunc(sfunc) { }
+	MachineInstSelectionX64(IRFunction* sfunc) : context(sfunc->context), sfunc(sfunc) { }
 
 	void findMaxCallArgsSize();
 
@@ -91,10 +91,10 @@ private:
 	void callWin64(IRInstCall* node);
 	void callUnix64(IRInstCall* node);
 
-	void simpleCompareInst(IRInstBinary* node, MachineInstOpcode opSet, MachineInstOpcode opSet2 = MachineInstOpcode::nop, MachineInstOpcode opSet3 = MachineInstOpcode::nop);
-	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
-	void shiftBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps);
-	void divBinaryInst(IRInstBinary* node, const MachineInstOpcode* binaryOps, bool remainder, bool zeroext);
+	void simpleCompareInst(IRInstBinary* node, MachineInstOpcodeX64 opSet, MachineInstOpcodeX64 opSet2 = MachineInstOpcodeX64::nop, MachineInstOpcodeX64 opSet3 = MachineInstOpcodeX64::nop);
+	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcodeX64* binaryOps);
+	void shiftBinaryInst(IRInstBinary* node, const MachineInstOpcodeX64* binaryOps);
+	void divBinaryInst(IRInstBinary* node, const MachineInstOpcodeX64* binaryOps, bool remainder, bool zeroext);
 
 	void addDebugInfo(MachineInst* inst);
 	void pushValueOperand(MachineInst* inst, IRValue* operand, int dataSizeType);
@@ -102,15 +102,15 @@ private:
 
 	void emitPhi(IRBasicBlock* target);
 
-	void emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3);
-	void emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType, const MachineOperand& operand3);
-	void emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, const MachineOperand& operand2);
-	void emitInst(MachineInstOpcode opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType);
-	void emitInst(MachineInstOpcode opcode, IRValue* operand1, int dataSizeType, const MachineOperand& operand2);
-	void emitInst(MachineInstOpcode opcode, const MachineOperand &operand);
-	void emitInst(MachineInstOpcode opcode, IRValue* operand, int dataSizeType);
-	void emitInst(MachineInstOpcode opcode, IRBasicBlock* target);
-	void emitInst(MachineInstOpcode opcode, MachineBasicBlock* target);
+	void emitInst(MachineInstOpcodeX64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3);
+	void emitInst(MachineInstOpcodeX64 opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType, const MachineOperand& operand3);
+	void emitInst(MachineInstOpcodeX64 opcode, const MachineOperand& operand1, const MachineOperand& operand2);
+	void emitInst(MachineInstOpcodeX64 opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType);
+	void emitInst(MachineInstOpcodeX64 opcode, IRValue* operand1, int dataSizeType, const MachineOperand& operand2);
+	void emitInst(MachineInstOpcodeX64 opcode, const MachineOperand &operand);
+	void emitInst(MachineInstOpcodeX64 opcode, IRValue* operand, int dataSizeType);
+	void emitInst(MachineInstOpcodeX64 opcode, IRBasicBlock* target);
+	void emitInst(MachineInstOpcodeX64 opcode, MachineBasicBlock* target);
 
 	int getDataSizeType(IRType* type);
 
@@ -124,7 +124,7 @@ private:
 	MachineOperand newConstant(double value);
 	MachineOperand newConstant(const void *data, int size);
 	MachineOperand newImm(uint64_t imm);
-	MachineOperand newPhysReg(RegisterName name);
+	MachineOperand newPhysReg(RegisterNameX64 name);
 	MachineOperand newTempReg(MachineRegClass cls);
 
 	int createVirtReg(MachineRegClass cls);

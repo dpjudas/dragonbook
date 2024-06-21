@@ -5,7 +5,7 @@
 
 class MachineFunction;
 
-class UnwindInfoUnix
+class UnwindInfoUnixX64
 {
 public:
 	static std::vector<uint8_t> create(MachineFunction* func, unsigned int& functionStart);

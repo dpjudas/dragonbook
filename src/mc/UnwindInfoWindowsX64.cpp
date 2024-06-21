@@ -1,6 +1,6 @@
 
-#include "UnwindInfoWindows.h"
-#include "MachineInst.h"
+#include "UnwindInfoWindowsX64.h"
+#include "MachineInstX64.h"
 
 #define UWOP_PUSH_NONVOL 0
 #define UWOP_ALLOC_LARGE 1
@@ -12,7 +12,7 @@
 #define UWOP_SAVE_XMM128_FAR 9
 #define UWOP_PUSH_MACHFRAME 10
 
-std::vector<uint16_t> UnwindInfoWindows::create(MachineFunction* func)
+std::vector<uint16_t> UnwindInfoWindowsX64::create(MachineFunction* func)
 {
 	uint16_t version = 1, flags = 0, frameRegister = 0, frameOffset = 0;
 
@@ -90,7 +90,7 @@ std::vector<uint16_t> UnwindInfoWindows::create(MachineFunction* func)
 			codes.push_back(opoffset | (opcode << 8) | (opinfo << 12));
 		}
 
-		if (inst->opcode != MachineInstOpcode::jmp)
+		if (inst->opcode != (int)MachineInstOpcodeX64::jmp)
 			lastOffset = inst->unwindOffset;
 	}
 

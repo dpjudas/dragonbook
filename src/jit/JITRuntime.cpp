@@ -178,7 +178,7 @@ void* JITRuntime::getPointerToGlobal(const std::string& var)
 
 void JITRuntime::add(MachineCodeHolder* codeholder)
 {
-#ifdef _WIN64
+#if defined(_WIN64) && defined(_M_X64)
 	size_t codeSize = codeholder->codeSize();
 	size_t dataSize = codeholder->dataSize();
 	size_t unwindDataSize = codeholder->unwindDataSize();

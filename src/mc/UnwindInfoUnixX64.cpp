@@ -1,8 +1,8 @@
 
-#include "UnwindInfoUnix.h"
-#include "MachineInst.h"
+#include "UnwindInfoUnixX64.h"
+#include "MachineInstX64.h"
 
-std::vector<uint8_t> UnwindInfoUnix::create(MachineFunction* func, unsigned int& functionStart)
+std::vector<uint8_t> UnwindInfoUnixX64::create(MachineFunction* func, unsigned int& functionStart)
 {
 	// Build .eh_frame:
 	//
@@ -10,22 +10,22 @@ std::vector<uint8_t> UnwindInfoUnix::create(MachineFunction* func, unsigned int&
 	// The x64 specific details are described in "System V Application Binary Interface AMD64 Architecture Processor Supplement"
 
 	int dwarfRegId[16];
-	dwarfRegId[(int)RegisterName::rax] = 0;
-	dwarfRegId[(int)RegisterName::rdx] = 1;
-	dwarfRegId[(int)RegisterName::rcx] = 2;
-	dwarfRegId[(int)RegisterName::rbx] = 3;
-	dwarfRegId[(int)RegisterName::rsi] = 4;
-	dwarfRegId[(int)RegisterName::rdi] = 5;
-	dwarfRegId[(int)RegisterName::rbp] = 6;
-	dwarfRegId[(int)RegisterName::rsp] = 7;
-	dwarfRegId[(int)RegisterName::r8] = 8;
-	dwarfRegId[(int)RegisterName::r9] = 9;
-	dwarfRegId[(int)RegisterName::r10] = 10;
-	dwarfRegId[(int)RegisterName::r11] = 11;
-	dwarfRegId[(int)RegisterName::r12] = 12;
-	dwarfRegId[(int)RegisterName::r13] = 13;
-	dwarfRegId[(int)RegisterName::r14] = 14;
-	dwarfRegId[(int)RegisterName::r15] = 15;
+	dwarfRegId[(int)RegisterNameX64::rax] = 0;
+	dwarfRegId[(int)RegisterNameX64::rdx] = 1;
+	dwarfRegId[(int)RegisterNameX64::rcx] = 2;
+	dwarfRegId[(int)RegisterNameX64::rbx] = 3;
+	dwarfRegId[(int)RegisterNameX64::rsi] = 4;
+	dwarfRegId[(int)RegisterNameX64::rdi] = 5;
+	dwarfRegId[(int)RegisterNameX64::rbp] = 6;
+	dwarfRegId[(int)RegisterNameX64::rsp] = 7;
+	dwarfRegId[(int)RegisterNameX64::r8] = 8;
+	dwarfRegId[(int)RegisterNameX64::r9] = 9;
+	dwarfRegId[(int)RegisterNameX64::r10] = 10;
+	dwarfRegId[(int)RegisterNameX64::r11] = 11;
+	dwarfRegId[(int)RegisterNameX64::r12] = 12;
+	dwarfRegId[(int)RegisterNameX64::r13] = 13;
+	dwarfRegId[(int)RegisterNameX64::r14] = 14;
+	dwarfRegId[(int)RegisterNameX64::r15] = 15;
 	int dwarfRegRAId = 16;
 	int dwarfRegXmmId = 17;
 
@@ -35,7 +35,7 @@ std::vector<uint8_t> UnwindInfoUnix::create(MachineFunction* func, unsigned int&
 	uint8_t returnAddressReg = dwarfRegRAId;
 	int stackOffset = 8; // Offset from RSP to the Canonical Frame Address (CFA) - stack position where the CALL return address is stored
 
-	writeDefineCFA(cieInstructions, dwarfRegId[(int)RegisterName::rsp], stackOffset);
+	writeDefineCFA(cieInstructions, dwarfRegId[(int)RegisterNameX64::rsp], stackOffset);
 	writeRegisterStackLocation(cieInstructions, returnAddressReg, stackOffset);
 
 	uint64_t lastOffset = 0;
@@ -71,35 +71,35 @@ std::vector<uint8_t> UnwindInfoUnix::create(MachineFunction* func, unsigned int&
 	return stream;
 }
 
-void UnwindInfoUnix::writeLength(std::vector<uint8_t>& stream, unsigned int pos, unsigned int v)
+void UnwindInfoUnixX64::writeLength(std::vector<uint8_t>& stream, unsigned int pos, unsigned int v)
 {
 	*(uint32_t*)(&stream[pos]) = v;
 }
 
-void UnwindInfoUnix::writeUInt64(std::vector<uint8_t>& stream, uint64_t v)
+void UnwindInfoUnixX64::writeUInt64(std::vector<uint8_t>& stream, uint64_t v)
 {
 	for (int i = 0; i < 8; i++)
 		stream.push_back((v >> (i * 8)) & 0xff);
 }
 
-void UnwindInfoUnix::writeUInt32(std::vector<uint8_t>& stream, uint32_t v)
+void UnwindInfoUnixX64::writeUInt32(std::vector<uint8_t>& stream, uint32_t v)
 {
 	for (int i = 0; i < 4; i++)
 		stream.push_back((v >> (i * 8)) & 0xff);
 }
 
-void UnwindInfoUnix::writeUInt16(std::vector<uint8_t>& stream, uint16_t v)
+void UnwindInfoUnixX64::writeUInt16(std::vector<uint8_t>& stream, uint16_t v)
 {
 	for (int i = 0; i < 2; i++)
 		stream.push_back((v >> (i * 8)) & 0xff);
 }
 
-void UnwindInfoUnix::writeUInt8(std::vector<uint8_t>& stream, uint8_t v)
+void UnwindInfoUnixX64::writeUInt8(std::vector<uint8_t>& stream, uint8_t v)
 {
 	stream.push_back(v);
 }
 
-void UnwindInfoUnix::writeULEB128(std::vector<uint8_t>& stream, uint32_t v)
+void UnwindInfoUnixX64::writeULEB128(std::vector<uint8_t>& stream, uint32_t v)
 {
 	while (true)
 	{
@@ -116,7 +116,7 @@ void UnwindInfoUnix::writeULEB128(std::vector<uint8_t>& stream, uint32_t v)
 	}
 }
 
-void UnwindInfoUnix::writeSLEB128(std::vector<uint8_t>& stream, int32_t v)
+void UnwindInfoUnixX64::writeSLEB128(std::vector<uint8_t>& stream, int32_t v)
 {
 	if (v >= 0)
 	{
@@ -140,7 +140,7 @@ void UnwindInfoUnix::writeSLEB128(std::vector<uint8_t>& stream, int32_t v)
 	}
 }
 
-void UnwindInfoUnix::writePadding(std::vector<uint8_t>& stream)
+void UnwindInfoUnixX64::writePadding(std::vector<uint8_t>& stream)
 {
 	int padding = stream.size() % 8;
 	if (padding != 0)
@@ -150,7 +150,7 @@ void UnwindInfoUnix::writePadding(std::vector<uint8_t>& stream)
 	}
 }
 
-void UnwindInfoUnix::writeCIE(std::vector<uint8_t>& stream, const std::vector<uint8_t>& cieInstructions, uint8_t returnAddressReg)
+void UnwindInfoUnixX64::writeCIE(std::vector<uint8_t>& stream, const std::vector<uint8_t>& cieInstructions, uint8_t returnAddressReg)
 {
 	unsigned int lengthPos = (unsigned int)stream.size();
 	writeUInt32(stream, 0); // Length
@@ -174,7 +174,7 @@ void UnwindInfoUnix::writeCIE(std::vector<uint8_t>& stream, const std::vector<ui
 	writeLength(stream, lengthPos, (unsigned int)stream.size() - lengthPos - 4);
 }
 
-void UnwindInfoUnix::writeFDE(std::vector<uint8_t>& stream, const std::vector<uint8_t>& fdeInstructions, uint32_t cieLocation, unsigned int& functionStart)
+void UnwindInfoUnixX64::writeFDE(std::vector<uint8_t>& stream, const std::vector<uint8_t>& fdeInstructions, uint32_t cieLocation, unsigned int& functionStart)
 {
 	unsigned int lengthPos = (unsigned int)stream.size();
 	writeUInt32(stream, 0); // Length
@@ -194,7 +194,7 @@ void UnwindInfoUnix::writeFDE(std::vector<uint8_t>& stream, const std::vector<ui
 	writeLength(stream, lengthPos, (unsigned int)stream.size() - lengthPos - 4);
 }
 
-void UnwindInfoUnix::writeAdvanceLoc(std::vector<uint8_t>& fdeInstructions, uint64_t offset, uint64_t& lastOffset)
+void UnwindInfoUnixX64::writeAdvanceLoc(std::vector<uint8_t>& fdeInstructions, uint64_t offset, uint64_t& lastOffset)
 {
 	uint64_t delta = offset - lastOffset;
 	if (delta < (1 << 6))
@@ -219,20 +219,20 @@ void UnwindInfoUnix::writeAdvanceLoc(std::vector<uint8_t>& fdeInstructions, uint
 	lastOffset = offset;
 }
 
-void UnwindInfoUnix::writeDefineCFA(std::vector<uint8_t>& cieInstructions, int dwarfRegId, int stackOffset)
+void UnwindInfoUnixX64::writeDefineCFA(std::vector<uint8_t>& cieInstructions, int dwarfRegId, int stackOffset)
 {
 	writeUInt8(cieInstructions, 0x0c); // DW_CFA_def_cfa
 	writeULEB128(cieInstructions, dwarfRegId);
 	writeULEB128(cieInstructions, stackOffset);
 }
 
-void UnwindInfoUnix::writeDefineStackOffset(std::vector<uint8_t>& fdeInstructions, int stackOffset)
+void UnwindInfoUnixX64::writeDefineStackOffset(std::vector<uint8_t>& fdeInstructions, int stackOffset)
 {
 	writeUInt8(fdeInstructions, 0x0e); // DW_CFA_def_cfa_offset
 	writeULEB128(fdeInstructions, stackOffset);
 }
 
-void UnwindInfoUnix::writeRegisterStackLocation(std::vector<uint8_t>& instructions, int dwarfRegId, int stackLocation)
+void UnwindInfoUnixX64::writeRegisterStackLocation(std::vector<uint8_t>& instructions, int dwarfRegId, int stackLocation)
 {
 	writeUInt8(instructions, (2 << 6) | dwarfRegId); // DW_CFA_offset
 	writeULEB128(instructions, stackLocation);

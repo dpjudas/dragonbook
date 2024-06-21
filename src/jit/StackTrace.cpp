@@ -18,7 +18,7 @@ int StackTrace::Capture(int max_frames, void** out_frames)
 {
 	memset(out_frames, 0, sizeof(void*) * max_frames);
 
-#ifdef _WIN64
+#if defined(_WIN64) && defined(_M_X64)
 	// RtlCaptureStackBackTrace doesn't support RtlAddFunctionTable..
 
 	CONTEXT context;

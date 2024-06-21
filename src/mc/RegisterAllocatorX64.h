@@ -1,20 +1,20 @@
 #pragma once
 
-#include "MachineInst.h"
+#include "MachineInstX64.h"
 #include <list>
 #include <set>
 
-class RARegisterLiveReference
+class RARegisterLiveReferenceX64
 {
 public:
-	RARegisterLiveReference(MachineBasicBlock* bb) : bb(bb) { }
+	RARegisterLiveReferenceX64(MachineBasicBlock* bb) : bb(bb) { }
 
 	MachineBasicBlock* bb = nullptr;
 	int refcount = 1;
-	std::unique_ptr<RARegisterLiveReference> next;
+	std::unique_ptr<RARegisterLiveReferenceX64> next;
 };
 
-struct RARegisterInfo
+struct RARegisterInfoX64
 {
 	static MachineOperand nullStackLocation() { MachineOperand op; op.type = MachineOperandType::spillOffset; op.spillOffset = -1; return op; }
 
@@ -26,22 +26,22 @@ struct RARegisterInfo
 	bool stackvar = false;
 	const std::string* name = nullptr;
 
-	std::unique_ptr<RARegisterLiveReference> liveReferences;
+	std::unique_ptr<RARegisterLiveReferenceX64> liveReferences;
 };
 
-struct RARegisterClass
+struct RARegisterClassX64
 {
 	std::list<int> mru;
-	std::list<int>::iterator mruIt[(int)RegisterName::vregstart];
+	std::list<int>::iterator mruIt[(int)RegisterNameX64::vregstart];
 };
 
-class RegisterAllocator
+class RegisterAllocatorX64
 {
 public:
 	static void run(IRContext* context, MachineFunction* func);
 
 private:
-	RegisterAllocator(IRContext* context, MachineFunction* func) : context(context), func(func) { }
+	RegisterAllocatorX64(IRContext* context, MachineFunction* func) : context(context), func(func) { }
 	void run();
 
 	void allocStackVars();
@@ -49,8 +49,8 @@ private:
 	void setupArgsWin64();
 	void setupArgsUnix64();
 
-	void emitProlog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackAdjustment, bool dsa);
-	void emitEpilog(const std::vector<RegisterName>& savedRegs, const std::vector<RegisterName>& savedXmmRegs, int stackAdjustment, bool dsa);
+	void emitProlog(const std::vector<RegisterNameX64>& savedRegs, const std::vector<RegisterNameX64>& savedXmmRegs, int stackAdjustment, bool dsa);
+	void emitEpilog(const std::vector<RegisterNameX64>& savedRegs, const std::vector<RegisterNameX64>& savedXmmRegs, int stackAdjustment, bool dsa);
 
 	bool isFloat(IRType* type) const { return dynamic_cast<IRFloatType*>(type); }
 	bool isDouble(IRType* type) const { return dynamic_cast<IRDoubleType*>(type); }
@@ -77,14 +77,14 @@ private:
 
 	std::string getVRegName(size_t vregIndex);
 
-	std::vector<RegisterName> volatileRegs;
-	std::set<RegisterName> usedRegs;
+	std::vector<RegisterNameX64> volatileRegs;
+	std::set<RegisterNameX64> usedRegs;
 
 	IRContext* context;
 	MachineFunction* func;
 
-	std::vector<RARegisterInfo> reginfo;
-	RARegisterClass regclass[2];
+	std::vector<RARegisterInfoX64> reginfo;
+	RARegisterClassX64 regclass[2];
 
 	int nextSpillOffset = 0;
 	std::vector<int> freeSpillOffsets;

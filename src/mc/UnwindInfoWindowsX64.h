@@ -5,7 +5,7 @@
 
 class MachineFunction;
 
-class UnwindInfoWindows
+class UnwindInfoWindowsX64
 {
 public:
 	static std::vector<uint16_t> create(MachineFunction* func);

@@ -5,9 +5,9 @@
 #include "dragonbook/IRBasicBlock.h"
 #include "dragonbook/IRFunction.h"
 #include "mc/MachineInst.h"
-#include "mc/MachineInstSelection.h"
-#include "mc/RegisterAllocator.h"
-#include "mc/AssemblyWriter.h"
+#include "mc/MachineInstSelectionX64.h"
+#include "mc/RegisterAllocatorX64.h"
+#include "mc/AssemblyWriterX64.h"
 
 IRContext::IRContext()
 {
@@ -47,9 +47,9 @@ MachineInst* IRContext::newMachineInst()
 
 std::string IRContext::getFunctionAssembly(IRFunction* func)
 {
-	MachineFunction* mcfunc = MachineInstSelection::codegen(func);
-	RegisterAllocator::run(func->context, mcfunc);
-	AssemblyWriter writer(mcfunc);
+	MachineFunction* mcfunc = MachineInstSelectionX64::codegen(func);
+	RegisterAllocatorX64::run(func->context, mcfunc);
+	AssemblyWriterX64 writer(mcfunc);
 	writer.codegen();
 	return writer.output.str();
 }

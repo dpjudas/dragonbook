@@ -80,5 +80,5 @@ private:
 	std::vector<BBRelocateEntry> bbRelocateInfo;
 	std::map<MachineBasicBlock*, size_t> bbOffsets;
 
-	friend class MachineCodeWriter;
+	friend class MachineCodeWriterX64;
 };
