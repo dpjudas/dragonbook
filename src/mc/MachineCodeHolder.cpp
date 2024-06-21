@@ -1,10 +1,10 @@
 
 #include "MachineCodeHolder.h"
-#include "MachineCodeWriterX64.h"
-#include "MachineInstSelectionX64.h"
-#include "RegisterAllocatorX64.h"
-#include "UnwindInfoWindowsX64.h"
-#include "UnwindInfoUnixX64.h"
+#include "x64/MachineCodeWriterX64.h"
+#include "x64/MachineInstSelectionX64.h"
+#include "x64/RegisterAllocatorX64.h"
+#include "x64/UnwindInfoWindowsX64.h"
+#include "x64/UnwindInfoUnixX64.h"
 
 void MachineCodeHolder::addFunction(IRFunction* func)
 {

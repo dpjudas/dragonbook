@@ -5,9 +5,9 @@
 #include "dragonbook/IRBasicBlock.h"
 #include "dragonbook/IRFunction.h"
 #include "mc/MachineInst.h"
-#include "mc/MachineInstSelectionX64.h"
-#include "mc/RegisterAllocatorX64.h"
-#include "mc/AssemblyWriterX64.h"
+#include "mc/x64/MachineInstSelectionX64.h"
+#include "mc/x64/RegisterAllocatorX64.h"
+#include "mc/x64/AssemblyWriterX64.h"
 
 IRContext::IRContext()
 {

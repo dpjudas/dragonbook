@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MachineInst.h"
+#include "../MachineInst.h"
 
 enum class MachineInstOpcodeX64 : int
 {

@@ -1,6 +1,5 @@
 
 #include "AssemblyWriterX64.h"
-#include "MachineInst.h"
 
 void AssemblyWriterX64::codegen()
 {

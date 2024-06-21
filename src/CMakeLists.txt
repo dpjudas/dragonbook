@@ -26,21 +26,21 @@ set(LIB_SOURCES
 	jit/StackTrace.cpp
 	jit/StackTrace.h
 	mc/MachineInst.h
-	mc/MachineInstX64.h
 	mc/MachineCodeHolder.cpp
 	mc/MachineCodeHolder.h
-	mc/RegisterAllocatorX64.cpp
-	mc/RegisterAllocatorX64.h
-	mc/MachineInstSelectionX64.cpp
-	mc/MachineInstSelectionX64.h
-	mc/MachineCodeWriterX64.cpp
-	mc/MachineCodeWriterX64.h
-	mc/AssemblyWriterX64.cpp
-	mc/AssemblyWriterX64.h
-	mc/UnwindInfoUnixX64.cpp
-	mc/UnwindInfoUnixX64.h
-	mc/UnwindInfoWindowsX64.cpp
-	mc/UnwindInfoWindowsX64.h
+	mc/x64/MachineInstX64.h
+	mc/x64/RegisterAllocatorX64.cpp
+	mc/x64/RegisterAllocatorX64.h
+	mc/x64/MachineInstSelectionX64.cpp
+	mc/x64/MachineInstSelectionX64.h
+	mc/x64/MachineCodeWriterX64.cpp
+	mc/x64/MachineCodeWriterX64.h
+	mc/x64/AssemblyWriterX64.cpp
+	mc/x64/AssemblyWriterX64.h
+	mc/x64/UnwindInfoUnixX64.cpp
+	mc/x64/UnwindInfoUnixX64.h
+	mc/x64/UnwindInfoWindowsX64.cpp
+	mc/x64/UnwindInfoWindowsX64.h
 )
 
 set(LIB_LIBS
@@ -87,3 +87,4 @@ source_group("dragonbook" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/dragon
 source_group("ir" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/ir/.+")
 source_group("jit" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/jit/.+")
 source_group("mc" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/mc/.+")
+source_group("mc\\x64" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/mc/x64/.+")
