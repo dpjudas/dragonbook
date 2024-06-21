@@ -41,6 +41,9 @@ set(LIB_SOURCES
 	mc/x64/UnwindInfoUnixX64.h
 	mc/x64/UnwindInfoWindowsX64.cpp
 	mc/x64/UnwindInfoWindowsX64.h
+	mc/aarch64/MachineInstAArch64.h
+	mc/aarch64/MachineInstSelectionAArch64.cpp
+	mc/aarch64/MachineInstSelectionAArch64.h
 )
 
 set(LIB_LIBS
@@ -88,3 +91,4 @@ source_group("ir" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/ir/.+")
 source_group("jit" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/jit/.+")
 source_group("mc" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/mc/.+")
 source_group("mc\\x64" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/mc/x64/.+")
+source_group("mc\\aarch64" REGULAR_EXPRESSION "${CMAKE_CURRENT_SOURCE_DIR}/mc/aarch64/.+")
