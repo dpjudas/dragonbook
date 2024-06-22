@@ -23,6 +23,9 @@ enum class MachineInstOpcodeAArch64 : int
 	mulss, mulsd, mul64, mul32,
 	divss, divsd, sdiv64, sdiv32,
 	udiv64, udiv32,
+	cvtsd2ss, cvtss2sd,
+	cvttsd2si, cvttss2si,
+	cvtsi2sd, cvtsi2ss,
 };
 
 enum class RegisterNameAArch64 : int

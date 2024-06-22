@@ -96,6 +96,12 @@ void MachineCodeWriterAArch64::opcode(MachineInst* inst)
 	case MachineInstOpcodeAArch64::sdiv32: sdiv32(inst); break;
 	case MachineInstOpcodeAArch64::udiv64: udiv64(inst); break;
 	case MachineInstOpcodeAArch64::udiv32: udiv32(inst); break;
+	case MachineInstOpcodeAArch64::cvtsd2ss: cvtsd2ss(inst); break;
+	case MachineInstOpcodeAArch64::cvtss2sd: cvtss2sd(inst); break;
+	case MachineInstOpcodeAArch64::cvttsd2si: cvttsd2si(inst); break;
+	case MachineInstOpcodeAArch64::cvttss2si: cvttss2si(inst); break;
+	case MachineInstOpcodeAArch64::cvtsi2sd: cvtsi2sd(inst); break;
+	case MachineInstOpcodeAArch64::cvtsi2ss: cvtsi2ss(inst); break;
 	}
 }
 
@@ -859,6 +865,60 @@ void MachineCodeWriterAArch64::udiv32(MachineInst* inst)
 	// UDIV
 	uint32_t opcode = 0b00011010110'00000'000010'00000'00000;
 	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
+}
+
+void MachineCodeWriterAArch64::cvtsd2ss(MachineInst* inst)
+{
+	// FCVT (scalar)
+	uint32_t opcode = 0b00011110'01'10001'00'10000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
+}
+
+void MachineCodeWriterAArch64::cvtss2sd(MachineInst* inst)
+{
+	// FCVT (scalar)
+	uint32_t opcode = 0b00011110'00'10001'01'10000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
+}
+
+void MachineCodeWriterAArch64::cvttsd2si(MachineInst* inst)
+{
+	// FCVTAS (scalar)
+	uint32_t opcode = 0b10011110'00'100100000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
+}
+
+void MachineCodeWriterAArch64::cvttss2si(MachineInst* inst)
+{
+	// FCVTAS (scalar)
+	uint32_t opcode = 0b10011110'01'100100000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
+}
+
+void MachineCodeWriterAArch64::cvtsi2sd(MachineInst* inst)
+{
+	// SCVTF (scalar, integer)
+	uint32_t opcode = 0b00011110'01'100010000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
+}
+
+void MachineCodeWriterAArch64::cvtsi2ss(MachineInst* inst)
+{
+	// SCVTF (scalar, integer)
+	uint32_t opcode = 0b00011110'00'100010000000'00000'00000;
 	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);

@@ -79,6 +79,12 @@ private:
 	void sdiv32(MachineInst* inst);
 	void udiv64(MachineInst* inst);
 	void udiv32(MachineInst* inst);
+	void cvtsd2ss(MachineInst* inst);
+	void cvtss2sd(MachineInst* inst);
+	void cvttsd2si(MachineInst* inst);
+	void cvttss2si(MachineInst* inst);
+	void cvtsi2sd(MachineInst* inst);
+	void cvtsi2ss(MachineInst* inst);
 
 	void writeOpcode(uint32_t opcode, MachineInst* debugInfo);
 
