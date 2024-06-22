@@ -70,6 +70,8 @@ void MachineCodeWriterAArch64::opcode(MachineInst* inst)
 	case MachineInstOpcodeAArch64::sub32: sub32(inst); break;
 	case MachineInstOpcodeAArch64::not64: not64(inst); break;
 	case MachineInstOpcodeAArch64::not32: not32(inst); break;
+	case MachineInstOpcodeAArch64::negss: negss(inst); break;
+	case MachineInstOpcodeAArch64::negsd: negsd(inst); break;
 	case MachineInstOpcodeAArch64::neg64: neg64(inst); break;
 	case MachineInstOpcodeAArch64::neg32: neg32(inst); break;
 	case MachineInstOpcodeAArch64::shl64: shl64(inst); break;
@@ -82,8 +84,6 @@ void MachineCodeWriterAArch64::opcode(MachineInst* inst)
 	case MachineInstOpcodeAArch64::and32: and32(inst); break;
 	case MachineInstOpcodeAArch64::or64: or64(inst); break;
 	case MachineInstOpcodeAArch64::or32: or32(inst); break;
-	case MachineInstOpcodeAArch64::xorpd: xorpd(inst); break;
-	case MachineInstOpcodeAArch64::xorps: xorps(inst); break;
 	case MachineInstOpcodeAArch64::xor64: xor64(inst); break;
 	case MachineInstOpcodeAArch64::xor32: xor32(inst); break;
 	case MachineInstOpcodeAArch64::mulss: mulss(inst); break;
@@ -106,10 +106,26 @@ void MachineCodeWriterAArch64::nop(MachineInst* inst)
 
 void MachineCodeWriterAArch64::loadss(MachineInst* inst)
 {
+	auto srcOffset = getImmediateOffset(inst->operands[1]);
+
+	// LDR (immediate):
+	uint32_t opcode = 0b10'111101'01'000000000000'00000'00000;
+	opcode |= (srcOffset.second & ((1 << 12) - 1)) << 10; // imm12
+	opcode |= getPhysReg(srcOffset.first) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::loadsd(MachineInst* inst)
 {
+	auto srcOffset = getImmediateOffset(inst->operands[1]);
+
+	// LDR (immediate):
+	uint32_t opcode = 0b11'111101'01'000000000000'00000'00000;
+	opcode |= (srcOffset.second & ((1 << 12) - 1)) << 10; // imm12
+	opcode |= getPhysReg(srcOffset.first) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::load64(MachineInst* inst)
@@ -162,10 +178,26 @@ void MachineCodeWriterAArch64::load8(MachineInst* inst)
 
 void MachineCodeWriterAArch64::storess(MachineInst* inst)
 {
+	auto dstOffset = getImmediateOffset(inst->operands[0]);
+
+	// STR (immediate):
+	uint32_t opcode = 0b10'111101'00'000000000000'00000'00000;
+	opcode |= (dstOffset.second & ((1 << 12) - 1)) << 10; // imm12
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(dstOffset.first); // Rt
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::storesd(MachineInst* inst)
 {
+	auto dstOffset = getImmediateOffset(inst->operands[0]);
+
+	// STR (immediate):
+	uint32_t opcode = 0b11'111101'00'000000000000'00000'00000;
+	opcode |= (dstOffset.second & ((1 << 12) - 1)) << 10; // imm12
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(dstOffset.first); // Rt
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::store64(MachineInst* inst)
@@ -175,7 +207,7 @@ void MachineCodeWriterAArch64::store64(MachineInst* inst)
 	// STR (immediate):
 	uint32_t opcode = 0b1111100100'000000000000'00000'00000;
 	opcode |= (dstOffset.second & ((1 << 12) - 1)) << 10; // imm12
-	opcode |= getPhysReg(inst->operands[0]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 	opcode |= getPhysReg(dstOffset.first); // Rt
 	writeOpcode(opcode, inst);
 }
@@ -187,7 +219,7 @@ void MachineCodeWriterAArch64::store32(MachineInst* inst)
 	// STR (immediate):
 	uint32_t opcode = 0b1011100100'000000000000'00000'00000;
 	opcode |= (dstOffset.second & ((1 << 12) - 1)) << 10; // imm12
-	opcode |= getPhysReg(inst->operands[0]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 	opcode |= getPhysReg(dstOffset.first); // Rt
 	writeOpcode(opcode, inst);
 }
@@ -199,7 +231,7 @@ void MachineCodeWriterAArch64::store16(MachineInst* inst)
 	// STRH (immediate):
 	uint32_t opcode = 0b0111100100'000000000000'00000'00000;
 	opcode |= (dstOffset.second & ((1 << 12) - 1)) << 10; // imm12
-	opcode |= getPhysReg(inst->operands[0]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 	opcode |= getPhysReg(dstOffset.first); // Rt
 	writeOpcode(opcode, inst);
 }
@@ -211,23 +243,34 @@ void MachineCodeWriterAArch64::store8(MachineInst* inst)
 	// STRB (immediate):
 	uint32_t opcode = 0b0011100100'000000000000'00000'00000;
 	opcode |= (dstOffset.second & ((1 << 12) - 1)) << 10; // imm12
-	opcode |= getPhysReg(inst->operands[0]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 	opcode |= getPhysReg(dstOffset.first); // Rt
 	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movss(MachineInst* inst)
 {
+	// FMOV (register)
+	uint32_t opcode = 0b00011110'00'100000010000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movsd(MachineInst* inst)
 {
+	// FMOV (register)
+	uint32_t opcode = 0b00011110'01'100000010000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::mov64(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
 	{
+		// MOVZ
 		uint32_t opcode = 0b110100101'00'0000000000000000'00000;
 		opcode |= (inst->operands[1].immvalue & 0xffff) << 5; // imm16
 		opcode |= getPhysReg(inst->operands[0]); // Rd
@@ -235,6 +278,7 @@ void MachineCodeWriterAArch64::mov64(MachineInst* inst)
 	}
 	else
 	{
+		// MOV (register)
 		uint32_t opcode = 0b10101010000'00000'000000'11111'00000;
 		opcode |= getPhysReg(inst->operands[1]) << 16; // Rm
 		opcode |= getPhysReg(inst->operands[0]); // Rd
@@ -246,6 +290,7 @@ void MachineCodeWriterAArch64::mov32(MachineInst* inst)
 {
 	if (inst->operands[1].type == MachineOperandType::imm)
 	{
+		// MOVZ
 		uint32_t opcode = 0b010100101'00'0000000000000000'00000;
 		opcode |= (inst->operands[1].immvalue & 0xffff) << 5; // imm16
 		opcode |= getPhysReg(inst->operands[0]); // Rd
@@ -253,6 +298,7 @@ void MachineCodeWriterAArch64::mov32(MachineInst* inst)
 	}
 	else
 	{
+		// MOV (register)
 		uint32_t opcode = 0b00101010000'00000'000000'11111'00000;
 		opcode |= getPhysReg(inst->operands[0]) << 16; // Rm
 		opcode |= getPhysReg(inst->operands[1]); // Rd
@@ -343,27 +389,43 @@ void MachineCodeWriterAArch64::movzx16_64(MachineInst* inst)
 
 void MachineCodeWriterAArch64::addss(MachineInst* inst)
 {
+	// FADD (scalar)
+	uint32_t opcode = 0b00011110'00'1'00000'001010'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::addsd(MachineInst* inst)
 {
+	// FADD (scalar)
+	uint32_t opcode = 0b00011110'01'1'00000'001010'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::add64(MachineInst* inst)
 {
 	if (inst->operands[2].type == MachineOperandType::imm)
 	{
+		// ADD (immediate)
 		uint32_t opcode = 0b1001000100'000000000000'00000'00000;
 		opcode |= (inst->operands[2].immvalue & ((1 << 12) - 1)) << 10; // imm12
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
 	}
 	else
 	{
+		// ADD (extended register)
 		uint32_t opcode = 0b10001011001'00000'011'000'00000'00000;
 		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
 	}
 }
 
@@ -371,43 +433,63 @@ void MachineCodeWriterAArch64::add32(MachineInst* inst)
 {
 	if (inst->operands[2].type == MachineOperandType::imm)
 	{
+		// ADD (immediate)
 		uint32_t opcode = 0b0001000100'000000000000'00000'00000;
 		opcode |= (inst->operands[2].immvalue & ((1 << 12) - 1)) << 10; // imm12
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
 	}
 	else
 	{
+		// ADD (extended register)
 		uint32_t opcode = 0b00001011001'00000'010'000'00000'00000;
 		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
 	}
 }
 
 void MachineCodeWriterAArch64::subss(MachineInst* inst)
 {
+	// FSUB (scalar)
+	uint32_t opcode = 0b00011110'00'1'00000'001110'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::subsd(MachineInst* inst)
 {
+	// FSUB (scalar)
+	uint32_t opcode = 0b00011110'01'1'00000'001110'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::sub64(MachineInst* inst)
 {
 	if (inst->operands[2].type == MachineOperandType::imm)
 	{
+		// SUB (immediate)
 		uint32_t opcode = 0b101000100'000000000000'00000'00000;
 		opcode |= (inst->operands[2].immvalue & ((1 << 12) - 1)) << 10; // imm12
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
 	}
 	else
 	{
+		// SUB (extended register)
 		uint32_t opcode = 0b11001011001'00000'010'000'00000'00000;
 		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
 	}
 }
 
@@ -415,130 +497,371 @@ void MachineCodeWriterAArch64::sub32(MachineInst* inst)
 {
 	if (inst->operands[2].type == MachineOperandType::imm)
 	{
+		// SUB (immediate)
 		uint32_t opcode = 0b101000100'000000000000'00000'00000;
 		opcode |= (inst->operands[2].immvalue & ((1 << 12) - 1)) << 10; // imm12
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
 	}
 	else
 	{
+		// SUB (extended register)
 		uint32_t opcode = 0b01001011001'00000'010'000'00000'00000;
 		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
 	}
 }
 
 void MachineCodeWriterAArch64::not64(MachineInst* inst)
 {
+	// ORN (shifted register)
+	uint32_t opcode = 0b10101010'00'1'00000'000000'00000'00000;
+	opcode |= getPhysReg(RegisterNameAArch64::zxr) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::not32(MachineInst* inst)
 {
+	// ORN (shifted register)
+	uint32_t opcode = 0b00101010'00'1'00000'000000'00000'00000;
+	opcode |= getPhysReg(RegisterNameAArch64::zxr) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::neg64(MachineInst* inst)
 {
+	// NEG (shifted register)
+	uint32_t opcode = 0b11001011'00'00000'000000'11111'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::neg32(MachineInst* inst)
 {
+	// NEG (shifted register)
+	uint32_t opcode = 0b01001011'00'00000'000000'11111'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::shl64(MachineInst* inst)
 {
+	if (inst->operands[2].type == MachineOperandType::imm)
+	{
+		// LSL (immediate)
+		uint32_t opcode = 0b1101001101'000000'000000'00000'00000;
+		opcode |= ((-(int)inst->operands[2].immvalue % 32) & ((1 << 6) - 1)) << 16; // immr
+		opcode |= ((31 - inst->operands[2].immvalue) & ((1 << 6) - 1)) << 10; // imms
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
+	else
+	{
+		// LSL (register)
+		uint32_t opcode = 0b10011010110'00000'001000'00000'00000;
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
 }
 
 void MachineCodeWriterAArch64::shl32(MachineInst* inst)
 {
+	if (inst->operands[2].type == MachineOperandType::imm)
+	{
+		// LSL (immediate)
+		uint32_t opcode = 0b0101001100'000000'000000'00000'00000;
+		opcode |= ((-(int)inst->operands[2].immvalue % 32) & ((1 << 6) - 1)) << 16; // immr
+		opcode |= ((31 - inst->operands[2].immvalue) & ((1 << 6) - 1)) << 10; // imms
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
+	else
+	{
+		// LSL (register)
+		uint32_t opcode = 0b00011010110'00000'001000'00000'00000;
+		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
 }
 
 void MachineCodeWriterAArch64::shr64(MachineInst* inst)
 {
+	if (inst->operands[2].type == MachineOperandType::imm)
+	{
+		// LSR (immediate)
+		uint32_t opcode = 0b1101001101'000000'111111'00000'00000;
+		opcode |= (inst->operands[2].immvalue & ((1 << 6) - 1)) << 16; // immr
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
+	else
+	{
+		// LSR (register)
+		uint32_t opcode = 0b10011010110'00000'001001'00000'00000;
+		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
 }
 
 void MachineCodeWriterAArch64::shr32(MachineInst* inst)
 {
+	if (inst->operands[2].type == MachineOperandType::imm)
+	{
+		// LSR (immediate)
+		uint32_t opcode = 0b0101001100'000000'011111'00000'00000;
+		opcode |= (inst->operands[2].immvalue & ((1 << 6) - 1)) << 16; // immr
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
+	else
+	{
+		// LSR (register)
+		uint32_t opcode = 0b00011010110'00000'001001'00000'00000;
+		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
 }
 
 void MachineCodeWriterAArch64::sar64(MachineInst* inst)
 {
+	if (inst->operands[2].type == MachineOperandType::imm)
+	{
+		// ASR (immediate)
+		uint32_t opcode = 0b1001001101'000000'111111'00000'00000;
+		opcode |= (inst->operands[2].immvalue & ((1 << 6) - 1)) << 16; // immr
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
+	else
+	{
+		// ASR (register)
+		uint32_t opcode = 0b10011010110'00000'001010'00000'00000;
+		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
 }
 
 void MachineCodeWriterAArch64::sar32(MachineInst* inst)
 {
+	if (inst->operands[2].type == MachineOperandType::imm)
+	{
+		// ASR (immediate)
+		uint32_t opcode = 0b0001001100'000000'011111'00000'00000;
+		opcode |= (inst->operands[2].immvalue & ((1 << 6) - 1)) << 16; // immr
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
+	else
+	{
+		// ASR (register)
+		uint32_t opcode = 0b00011010110'00000'001010'00000'00000;
+		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+		opcode |= getPhysReg(inst->operands[0]); // Rd
+		writeOpcode(opcode, inst);
+	}
 }
 
 void MachineCodeWriterAArch64::and64(MachineInst* inst)
 {
+	// AND (shifted register)
+	uint32_t opcode = 0b10001010'00'0'00000'000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::and32(MachineInst* inst)
 {
+	// AND (shifted register)
+	uint32_t opcode = 0b00001010'00'0'00000'000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::or64(MachineInst* inst)
 {
+	// ORR (shifted register)
+	uint32_t opcode = 0b10101010'00'0'00000'000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::or32(MachineInst* inst)
 {
+	// ORR (shifted register)
+	uint32_t opcode = 0b00101010'00'0'00000'000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
-void MachineCodeWriterAArch64::xorpd(MachineInst* inst)
+void MachineCodeWriterAArch64::negss(MachineInst* inst)
 {
+	// FNEG (scalar)
+	uint32_t opcode = 0b00011110'00'100001010000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
-void MachineCodeWriterAArch64::xorps(MachineInst* inst)
+void MachineCodeWriterAArch64::negsd(MachineInst* inst)
 {
+	// FNEG (scalar)
+	uint32_t opcode = 0b00011110'01'100001010000'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::xor64(MachineInst* inst)
 {
+	// EOR (shifted register)
+	uint32_t opcode = 0b11001010'00'0'00000'000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::xor32(MachineInst* inst)
 {
+	// EOR (shifted register)
+	uint32_t opcode = 0b01001010'00'0'00000'000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::mulss(MachineInst* inst)
 {
+	// FMUL (scalar)
+	uint32_t opcode = 0b00011110'00'1'00000'000010'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::mulsd(MachineInst* inst)
 {
+	// FMUL (scalar)
+	uint32_t opcode = 0b00011110'01'1'00000'000010'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::mul64(MachineInst* inst)
 {
+	// MUL
+	uint32_t opcode = 0b10011011000'00000'011111'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::mul32(MachineInst* inst)
 {
+	// MUL
+	uint32_t opcode = 0b00011011000'00000'011111'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::divss(MachineInst* inst)
 {
+	// FDIV (scalar)
+	uint32_t opcode = 0b00011110'00'1'00000'000110'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::divsd(MachineInst* inst)
 {
+	// FDIV (scalar)
+	uint32_t opcode = 0b00011110'01'1'00000'000110'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::sdiv64(MachineInst* inst)
 {
+	// SDIV
+	uint32_t opcode = 0b10011010110'00000'000011'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::sdiv32(MachineInst* inst)
 {
+	// SDIV
+	uint32_t opcode = 0b00011010110'00000'000011'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::udiv64(MachineInst* inst)
 {
+	// UDIV
+	uint32_t opcode = 0b10011010110'00000'000010'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::udiv32(MachineInst* inst)
 {
+	// UDIV
+	uint32_t opcode = 0b00011010110'00000'000010'00000'00000;
+	opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::writeOpcode(uint32_t opcode, MachineInst* debugInfo)

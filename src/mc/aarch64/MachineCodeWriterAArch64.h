@@ -65,8 +65,8 @@ private:
 	void and32(MachineInst* inst);
 	void or64(MachineInst* inst);
 	void or32(MachineInst* inst);
-	void xorpd(MachineInst* inst);
-	void xorps(MachineInst* inst);
+	void negss(MachineInst* inst);
+	void negsd(MachineInst* inst);
 	void xor64(MachineInst* inst);
 	void xor32(MachineInst* inst);
 	void mulss(MachineInst* inst);
