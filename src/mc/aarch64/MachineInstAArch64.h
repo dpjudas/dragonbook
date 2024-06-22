@@ -5,13 +5,24 @@
 enum class MachineInstOpcodeAArch64 : int
 {
 	nop,
-	loadss, loadsd, load64, load32, load16, load8, // mov reg,ptr
-	storess, storesd, store64, store32, store16, store8, // mov ptr,reg
+	loadss, loadsd, load64, load32, load16, load8,
+	storess, storesd, store64, store32, store16, store8,
 	movss, movsd, mov64, mov32,
-	movsx8_16, movsx8_32, movsx8_64, movsx16_32, movsx16_64, movsx32_64,
-	movzx8_16, movzx8_32, movzx8_64, movzx16_32, movzx16_64,
+	movsx8_32, movsx8_64, movsx16_32, movsx16_64, movsx32_64,
+	movzx8_32, movzx8_64, movzx16_32, movzx16_64,
 	addss, addsd, add64, add32,
 	subss, subsd, sub64, sub32,
+	not64, not32,
+	neg64, neg32,
+	shl64, shl32,
+	shr64, shr32,
+	sar64, sar32,
+	and64, and32,
+	or64, or32,
+	xorpd, xorps, xor64, xor32,
+	mulss, mulsd, mul64, mul32,
+	divss, divsd, sdiv64, sdiv32,
+	udiv64, udiv32,
 };
 
 enum class RegisterNameAArch64 : int

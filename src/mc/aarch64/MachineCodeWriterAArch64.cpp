@@ -51,13 +51,11 @@ void MachineCodeWriterAArch64::opcode(MachineInst* inst)
 	case MachineInstOpcodeAArch64::movsd: movsd(inst); break;
 	case MachineInstOpcodeAArch64::mov64: mov64(inst); break;
 	case MachineInstOpcodeAArch64::mov32: mov32(inst); break;
-	case MachineInstOpcodeAArch64::movsx8_16: movsx8_16(inst); break;
 	case MachineInstOpcodeAArch64::movsx8_32: movsx8_32(inst); break;
 	case MachineInstOpcodeAArch64::movsx8_64: movsx8_64(inst); break;
 	case MachineInstOpcodeAArch64::movsx16_32: movsx16_32(inst); break;
 	case MachineInstOpcodeAArch64::movsx16_64: movsx16_64(inst); break;
 	case MachineInstOpcodeAArch64::movsx32_64: movsx32_64(inst); break;
-	case MachineInstOpcodeAArch64::movzx8_16: movzx8_16(inst); break;
 	case MachineInstOpcodeAArch64::movzx8_32: movzx8_32(inst); break;
 	case MachineInstOpcodeAArch64::movzx8_64: movzx8_64(inst); break;
 	case MachineInstOpcodeAArch64::movzx16_32: movzx16_32(inst); break;
@@ -70,6 +68,34 @@ void MachineCodeWriterAArch64::opcode(MachineInst* inst)
 	case MachineInstOpcodeAArch64::subsd: subsd(inst); break;
 	case MachineInstOpcodeAArch64::sub64: sub64(inst); break;
 	case MachineInstOpcodeAArch64::sub32: sub32(inst); break;
+	case MachineInstOpcodeAArch64::not64: not64(inst); break;
+	case MachineInstOpcodeAArch64::not32: not32(inst); break;
+	case MachineInstOpcodeAArch64::neg64: neg64(inst); break;
+	case MachineInstOpcodeAArch64::neg32: neg32(inst); break;
+	case MachineInstOpcodeAArch64::shl64: shl64(inst); break;
+	case MachineInstOpcodeAArch64::shl32: shl32(inst); break;
+	case MachineInstOpcodeAArch64::shr64: shr64(inst); break;
+	case MachineInstOpcodeAArch64::shr32: shr32(inst); break;
+	case MachineInstOpcodeAArch64::sar64: sar64(inst); break;
+	case MachineInstOpcodeAArch64::sar32: sar32(inst); break;
+	case MachineInstOpcodeAArch64::and64: and64(inst); break;
+	case MachineInstOpcodeAArch64::and32: and32(inst); break;
+	case MachineInstOpcodeAArch64::or64: or64(inst); break;
+	case MachineInstOpcodeAArch64::or32: or32(inst); break;
+	case MachineInstOpcodeAArch64::xorpd: xorpd(inst); break;
+	case MachineInstOpcodeAArch64::xorps: xorps(inst); break;
+	case MachineInstOpcodeAArch64::xor64: xor64(inst); break;
+	case MachineInstOpcodeAArch64::xor32: xor32(inst); break;
+	case MachineInstOpcodeAArch64::mulss: mulss(inst); break;
+	case MachineInstOpcodeAArch64::mulsd: mulsd(inst); break;
+	case MachineInstOpcodeAArch64::mul64: mul64(inst); break;
+	case MachineInstOpcodeAArch64::mul32: mul32(inst); break;
+	case MachineInstOpcodeAArch64::divss: divss(inst); break;
+	case MachineInstOpcodeAArch64::divsd: divsd(inst); break;
+	case MachineInstOpcodeAArch64::sdiv64: sdiv64(inst); break;
+	case MachineInstOpcodeAArch64::sdiv32: sdiv32(inst); break;
+	case MachineInstOpcodeAArch64::udiv64: udiv64(inst); break;
+	case MachineInstOpcodeAArch64::udiv32: udiv32(inst); break;
 	}
 }
 
@@ -234,48 +260,85 @@ void MachineCodeWriterAArch64::mov32(MachineInst* inst)
 	}
 }
 
-void MachineCodeWriterAArch64::movsx8_16(MachineInst* inst)
-{
-}
-
 void MachineCodeWriterAArch64::movsx8_32(MachineInst* inst)
 {
+	// SXTB:
+	uint32_t opcode = 0b0001001100'000000000111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movsx8_64(MachineInst* inst)
 {
+	// SXTB:
+	uint32_t opcode = 0b1001001101'000000000111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movsx16_32(MachineInst* inst)
 {
+	// SXTH:
+	uint32_t opcode = 0b0001001100'000000001111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movsx16_64(MachineInst* inst)
 {
+	// SXTH:
+	uint32_t opcode = 0b1001001101'000000001111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movsx32_64(MachineInst* inst)
 {
-}
-
-void MachineCodeWriterAArch64::movzx8_16(MachineInst* inst)
-{
+	// SXTW:
+	uint32_t opcode = 0b1001001101'000000011111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movzx8_32(MachineInst* inst)
 {
+	// UTXB:
+	uint32_t opcode = 0b0101001100'000000000111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movzx8_64(MachineInst* inst)
 {
+	// UBFM: (same as UTXB with sf and N set to 1 - why isn't this an official alias?)
+	uint32_t opcode = 0b1101001101'000000000111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movzx16_32(MachineInst* inst)
 {
+	// UTXH:
+	uint32_t opcode = 0b0101001100'000000001111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::movzx16_64(MachineInst* inst)
 {
+	// UBFM: (same as UTXH with sf and N set to 1 - why isn't this an official alias?)
+	uint32_t opcode = 0b1101001101'000000001111'00000'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::addss(MachineInst* inst)
@@ -364,6 +427,118 @@ void MachineCodeWriterAArch64::sub32(MachineInst* inst)
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
 	}
+}
+
+void MachineCodeWriterAArch64::not64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::not32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::neg64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::neg32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::shl64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::shl32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::shr64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::shr32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::sar64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::sar32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::and64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::and32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::or64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::or32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::xorpd(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::xorps(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::xor64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::xor32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::mulss(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::mulsd(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::mul64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::mul32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::divss(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::divsd(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::sdiv64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::sdiv32(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::udiv64(MachineInst* inst)
+{
+}
+
+void MachineCodeWriterAArch64::udiv32(MachineInst* inst)
+{
 }
 
 void MachineCodeWriterAArch64::writeOpcode(uint32_t opcode, MachineInst* debugInfo)

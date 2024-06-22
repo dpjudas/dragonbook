@@ -34,13 +34,11 @@ private:
 	void movsd(MachineInst* inst);
 	void mov64(MachineInst* inst);
 	void mov32(MachineInst* inst);
-	void movsx8_16(MachineInst* inst);
 	void movsx8_32(MachineInst* inst);
 	void movsx8_64(MachineInst* inst);
 	void movsx16_32(MachineInst* inst);
 	void movsx16_64(MachineInst* inst);
 	void movsx32_64(MachineInst* inst);
-	void movzx8_16(MachineInst* inst);
 	void movzx8_32(MachineInst* inst);
 	void movzx8_64(MachineInst* inst);
 	void movzx16_32(MachineInst* inst);
@@ -53,6 +51,34 @@ private:
 	void subsd(MachineInst* inst);
 	void sub64(MachineInst* inst);
 	void sub32(MachineInst* inst);
+	void not64(MachineInst* inst);
+	void not32(MachineInst* inst);
+	void neg64(MachineInst* inst);
+	void neg32(MachineInst* inst);
+	void shl64(MachineInst* inst);
+	void shl32(MachineInst* inst);
+	void shr64(MachineInst* inst);
+	void shr32(MachineInst* inst);
+	void sar64(MachineInst* inst);
+	void sar32(MachineInst* inst);
+	void and64(MachineInst* inst);
+	void and32(MachineInst* inst);
+	void or64(MachineInst* inst);
+	void or32(MachineInst* inst);
+	void xorpd(MachineInst* inst);
+	void xorps(MachineInst* inst);
+	void xor64(MachineInst* inst);
+	void xor32(MachineInst* inst);
+	void mulss(MachineInst* inst);
+	void mulsd(MachineInst* inst);
+	void mul64(MachineInst* inst);
+	void mul32(MachineInst* inst);
+	void divss(MachineInst* inst);
+	void divsd(MachineInst* inst);
+	void sdiv64(MachineInst* inst);
+	void sdiv32(MachineInst* inst);
+	void udiv64(MachineInst* inst);
+	void udiv32(MachineInst* inst);
 
 	void writeOpcode(uint32_t opcode, MachineInst* debugInfo);
 
