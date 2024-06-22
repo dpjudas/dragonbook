@@ -34,8 +34,25 @@ private:
 	void movsd(MachineInst* inst);
 	void mov64(MachineInst* inst);
 	void mov32(MachineInst* inst);
-	void mov16(MachineInst* inst);
-	void mov8(MachineInst* inst);
+	void movsx8_16(MachineInst* inst);
+	void movsx8_32(MachineInst* inst);
+	void movsx8_64(MachineInst* inst);
+	void movsx16_32(MachineInst* inst);
+	void movsx16_64(MachineInst* inst);
+	void movsx32_64(MachineInst* inst);
+	void movzx8_16(MachineInst* inst);
+	void movzx8_32(MachineInst* inst);
+	void movzx8_64(MachineInst* inst);
+	void movzx16_32(MachineInst* inst);
+	void movzx16_64(MachineInst* inst);
+	void addss(MachineInst* inst);
+	void addsd(MachineInst* inst);
+	void add64(MachineInst* inst);
+	void add32(MachineInst* inst);
+	void subss(MachineInst* inst);
+	void subsd(MachineInst* inst);
+	void sub64(MachineInst* inst);
+	void sub32(MachineInst* inst);
 
 	void writeOpcode(uint32_t opcode, MachineInst* debugInfo);
 
