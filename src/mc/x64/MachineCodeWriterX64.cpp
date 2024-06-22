@@ -30,7 +30,7 @@ void MachineCodeWriterX64::basicblock(MachineBasicBlock* bb)
 
 void MachineCodeWriterX64::opcode(MachineInst* inst)
 {
-	switch (inst->opcode)
+	switch ((MachineInstOpcodeX64)inst->opcode)
 	{
 	default:
 	case MachineInstOpcodeX64::nop: nop(inst); break;

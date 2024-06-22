@@ -12,41 +12,13 @@ MachineFunction* MachineInstSelectionAArch64::codegen(IRFunction* sfunc)
 	selection.mfunc->type = dynamic_cast<IRFunctionType*>(sfunc->type);
 	selection.mfunc->prolog = sfunc->context->newMachineBasicBlock();
 	selection.mfunc->epilog = sfunc->context->newMachineBasicBlock();
-	/*
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // rax
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // rcx
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // rdx
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // rbx
-	selection.mfunc->registers.push_back(MachineRegClass::reserved); // rsp
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // rbp
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // rsi
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // rdi
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // r8
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // r9
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // r10
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // r11
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // r12
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // r13
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // r14
-	selection.mfunc->registers.push_back(MachineRegClass::gp); // r15
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm0
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm1
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm2
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm3
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm4
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm5
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm6
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm7
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm8
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm9
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm10
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm11
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm12
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm13
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm14
-	selection.mfunc->registers.push_back(MachineRegClass::xmm); // xmm15
+	for (int i = 0; i < 30; i++) // X0..X29
+		selection.mfunc->registers.push_back(MachineRegClass::gp);
+	selection.mfunc->registers.push_back(MachineRegClass::reserved); // lr (tbd: should we use this register and then restore it before calling RET instead?)
+	selection.mfunc->registers.push_back(MachineRegClass::reserved); // sp/zxr/wzr
+	for (int i = 0; i < 32; i++) // D0..D31
+		selection.mfunc->registers.push_back(MachineRegClass::xmm);
 	selection.mfunc->registers.resize((size_t)RegisterNameAArch64::vregstart);
-	*/
 
 	selection.findMaxCallArgsSize();
 

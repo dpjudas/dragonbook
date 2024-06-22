@@ -44,6 +44,8 @@ set(LIB_SOURCES
 	mc/aarch64/MachineInstAArch64.h
 	mc/aarch64/MachineInstSelectionAArch64.cpp
 	mc/aarch64/MachineInstSelectionAArch64.h
+	mc/aarch64/MachineCodeWriterAArch64.cpp
+	mc/aarch64/MachineCodeWriterAArch64.h
 )
 
 set(LIB_LIBS

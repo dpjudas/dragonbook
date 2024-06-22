@@ -81,4 +81,5 @@ private:
 	std::map<MachineBasicBlock*, size_t> bbOffsets;
 
 	friend class MachineCodeWriterX64;
+	friend class MachineCodeWriterAArch64;
 };
