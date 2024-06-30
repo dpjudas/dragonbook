@@ -85,6 +85,20 @@ private:
 	void cvttss2si(MachineInst* inst);
 	void cvtsi2sd(MachineInst* inst);
 	void cvtsi2ss(MachineInst* inst);
+	void cseteq(MachineInst* inst);
+	void csetne(MachineInst* inst);
+	void csetcs(MachineInst* inst);
+	void csetcc(MachineInst* inst);
+	void csetmi(MachineInst* inst);
+	void csetpl(MachineInst* inst);
+	void csetvs(MachineInst* inst);
+	void csetvc(MachineInst* inst);
+	void csethi(MachineInst* inst);
+	void csetls(MachineInst* inst);
+	void csetge(MachineInst* inst);
+	void csetlt(MachineInst* inst);
+	void csetgt(MachineInst* inst);
+	void csetle(MachineInst* inst);
 
 	void writeOpcode(uint32_t opcode, MachineInst* debugInfo);
 

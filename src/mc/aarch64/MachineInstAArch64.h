@@ -26,6 +26,8 @@ enum class MachineInstOpcodeAArch64 : int
 	cvtsd2ss, cvtss2sd,
 	cvttsd2si, cvttss2si,
 	cvtsi2sd, cvtsi2ss,
+	// ucomisd, ucomiss, cmp64, cmp32, cmp16, cmp8,
+	cseteq, csetne, csetcs, csetcc, csetmi, csetpl, csetvs, csetvc, csethi, csetls, csetge, csetlt, csetgt, csetle,
 };
 
 enum class RegisterNameAArch64 : int
