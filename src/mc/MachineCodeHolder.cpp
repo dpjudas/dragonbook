@@ -81,7 +81,10 @@ void MachineCodeHolder::relocate(void* codeDest, void* dataDest, void* unwindDes
 	for (const auto& entry : bbRelocateInfo)
 	{
 		int32_t value = (int32_t)(bbOffsets.find(entry.bb)->second - entry.pos - 4);
-		memcpy(codeDest8 + entry.pos, &value, sizeof(int32_t));
+		int32_t data = 0;
+		memcpy(&data, codeDest8 + entry.pos, sizeof(int32_t));
+		data = (data & ~entry.mask) | ((value << entry.shift) & entry.mask);
+		memcpy(codeDest8 + entry.pos, &data, sizeof(int32_t));
 	}
 
 	for (const auto& entry : callRelocateInfo)

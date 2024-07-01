@@ -52,9 +52,12 @@ private:
 	{
 		BBRelocateEntry() = default;
 		BBRelocateEntry(size_t pos, MachineBasicBlock* bb) : pos(pos), bb(bb) { }
+		BBRelocateEntry(size_t pos, MachineBasicBlock* bb, uint32_t mask, int shift) : pos(pos), bb(bb), mask(mask), shift(shift) { }
 
 		size_t pos = 0;
 		MachineBasicBlock* bb = nullptr;
+		uint32_t mask = 0xffffffff;
+		int shift = 0;
 	};
 
 	struct CallRelocateEntry

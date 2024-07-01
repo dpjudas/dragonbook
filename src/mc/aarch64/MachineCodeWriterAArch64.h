@@ -117,6 +117,12 @@ private:
 	void csetlt(MachineInst* inst);
 	void csetgt(MachineInst* inst);
 	void csetle(MachineInst* inst);
+	void b(MachineInst* inst);
+	void beq(MachineInst* inst);
+	void bne(MachineInst* inst);
+	void bl(MachineInst* inst); 
+	void blr(MachineInst* inst);
+	void ret(MachineInst* inst);
 
 	void writeOpcode(uint32_t opcode, MachineInst* debugInfo);
 

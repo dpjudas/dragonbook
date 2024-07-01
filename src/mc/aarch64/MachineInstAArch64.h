@@ -32,6 +32,8 @@ enum class MachineInstOpcodeAArch64 : int
 	cmp64_sx8, cmp64_sx16, cmp64_sx32, cmp64_sx64,
 	cmp64_zx8, cmp64_zx16, cmp64_zx32, cmp64_zx64,
 	cseteq, csetne, csetcs, csetcc, csetmi, csetpl, csetvs, csetvc, csethi, csetls, csetge, csetlt, csetgt, csetle,
+	b, beq, bne,
+	bl, blr, ret
 };
 
 enum class RegisterNameAArch64 : int

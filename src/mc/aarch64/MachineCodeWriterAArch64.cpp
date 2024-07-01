@@ -134,6 +134,12 @@ void MachineCodeWriterAArch64::opcode(MachineInst* inst)
 	case MachineInstOpcodeAArch64::csetlt: csetlt(inst); break;
 	case MachineInstOpcodeAArch64::csetgt: csetgt(inst); break;
 	case MachineInstOpcodeAArch64::csetle: csetle(inst); break;
+	case MachineInstOpcodeAArch64::b: b(inst); break;
+	case MachineInstOpcodeAArch64::beq: beq(inst); break;
+	case MachineInstOpcodeAArch64::bne: bne(inst); break;
+	case MachineInstOpcodeAArch64::bl: bl(inst); break;
+	case MachineInstOpcodeAArch64::blr: blr(inst); break;
+	case MachineInstOpcodeAArch64::ret: ret(inst); break;
 	}
 }
 
@@ -1245,6 +1251,54 @@ void MachineCodeWriterAArch64::csetle(MachineInst* inst)
 	// CSET invcond GT
 	uint32_t opcode = 0b0001101010011111'1101'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
+}
+
+void MachineCodeWriterAArch64::b(MachineInst* inst)
+{
+	// B
+	uint32_t opcode = 0b000101'11111111111111111111111111;
+	writeOpcode(opcode, inst);
+	codeholder->bbRelocateInfo.push_back({ codeholder->code.size() - 4, inst->operands[0].bb, (1 << 26) - 1, 0 });
+}
+
+void MachineCodeWriterAArch64::beq(MachineInst* inst)
+{
+	// B.cond
+	uint32_t opcode = 0b01010100'1111111111111111111'0'0000;
+	writeOpcode(opcode, inst);
+	codeholder->bbRelocateInfo.push_back({ codeholder->code.size() - 4, inst->operands[0].bb, (1 << 19) - 1, 5 });
+}
+
+void MachineCodeWriterAArch64::bne(MachineInst* inst)
+{
+	// B.cond
+	uint32_t opcode = 0b01010100'1111111111111111111'0'0001;
+	writeOpcode(opcode, inst);
+	codeholder->bbRelocateInfo.push_back({ codeholder->code.size() - 4, inst->operands[0].bb, (1 << 19) - 1, 5 });
+}
+
+void MachineCodeWriterAArch64::bl(MachineInst* inst)
+{
+	// BL
+	// uint32_t opcode = 0b100101'11111111111111111111111111;
+	// writeOpcode(opcode, inst);
+	// codeholder->callRelocateInfo.push_back({ codeholder->code.size() - 4, inst->operands[0].func, (1 << 26) - 1, 0 });
+}
+
+void MachineCodeWriterAArch64::blr(MachineInst* inst)
+{
+	// BLR
+	uint32_t opcode = 0b1101011000111111000000'00000'00000;
+	opcode |= getPhysReg(inst->operands[0]) << 5; // Rn
+	writeOpcode(opcode, inst);
+}
+
+void MachineCodeWriterAArch64::ret(MachineInst* inst)
+{
+	// RET
+	uint32_t opcode = 0b1101011001011111000000'00000'00000;
+	opcode |= getPhysReg(RegisterNameAArch64::lr) << 5; // Rn
 	writeOpcode(opcode, inst);
 }
 
