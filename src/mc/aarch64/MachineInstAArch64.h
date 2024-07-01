@@ -26,7 +26,11 @@ enum class MachineInstOpcodeAArch64 : int
 	cvtsd2ss, cvtss2sd,
 	cvttsd2si, cvttss2si,
 	cvtsi2sd, cvtsi2ss,
-	// ucomisd, ucomiss, cmp64, cmp32, cmp16, cmp8,
+	fcmpsd, fcmpss,
+	cmp32_sx8, cmp32_sx16, cmp32_sx32, cmp32_sx64,
+	cmp32_zx8, cmp32_zx16, cmp32_zx32, cmp32_zx64,
+	cmp64_sx8, cmp64_sx16, cmp64_sx32, cmp64_sx64,
+	cmp64_zx8, cmp64_zx16, cmp64_zx32, cmp64_zx64,
 	cseteq, csetne, csetcs, csetcc, csetmi, csetpl, csetvs, csetvc, csethi, csetls, csetge, csetlt, csetgt, csetle,
 };
 
