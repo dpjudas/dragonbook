@@ -5,6 +5,13 @@
 #include "x64/RegisterAllocatorX64.h"
 #include "x64/UnwindInfoWindowsX64.h"
 #include "x64/UnwindInfoUnixX64.h"
+#include "aarch64/MachineCodeWriterAArch64.h"
+#include "aarch64/MachineInstSelectionAArch64.h"
+#include "aarch64/RegisterAllocatorAArch64.h"
+
+#if defined(_M_X64) || defined(__x86_64)
+#define USE_X64
+#endif
 
 void MachineCodeHolder::addFunction(IRFunction* func)
 {
@@ -15,7 +22,11 @@ void MachineCodeHolder::addFunction(IRFunction* func)
 		entry.beginAddress = code.size();
 
 #if 0 // for checking if the machine code actually matches with a disassembler
+#ifdef USE_X64
 		MachineFunction* mcfunc = MachineInstSelectionX64::dumpinstructions(func);
+#else
+		MachineFunction* mcfunc = MachineInstSelectionAarch64::dumpinstructions(func);
+#endif
 #else
 		MachineFunction* mcfunc = MachineInstSelectionX64::codegen(func);
 		RegisterAllocatorX64::run(func->context, mcfunc);
@@ -27,13 +38,21 @@ void MachineCodeHolder::addFunction(IRFunction* func)
 		entry.endAddress = code.size();
 
 #ifdef WIN32
+#ifdef USE_X64
 		std::vector<uint16_t> data = UnwindInfoWindowsX64::create(mcfunc);
+#else
+		std::vector<uint16_t> data = UnwindInfoWindowsAarch64::create(mcfunc);
+#endif
 		entry.beginUnwindData = unwindData.size();
 		unwindData.resize(unwindData.size() + data.size() * sizeof(uint16_t));
 		memcpy(unwindData.data() + entry.beginUnwindData, data.data(), data.size() * sizeof(uint16_t));
 		entry.endUnwindData = unwindData.size();
 #else
+#ifdef USE_X64
 		std::vector<uint8_t> data = UnwindInfoUnixX64::create(mcfunc, entry.unixUnwindFunctionStart);
+#else
+		std::vector<uint8_t> data = UnwindInfoUnixAArch64::create(mcfunc, entry.unixUnwindFunctionStart);
+#endif
 		entry.beginUnwindData = unwindData.size();
 		unwindData.resize(unwindData.size() + data.size());
 		memcpy(unwindData.data() + entry.beginUnwindData, data.data(), data.size());
