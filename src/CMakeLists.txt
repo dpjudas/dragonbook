@@ -42,6 +42,8 @@ set(LIB_SOURCES
 	mc/x64/UnwindInfoWindowsX64.cpp
 	mc/x64/UnwindInfoWindowsX64.h
 	mc/aarch64/MachineInstAArch64.h
+	mc/aarch64/RegisterAllocatorAArch64.cpp
+	mc/aarch64/RegisterAllocatorAArch64.h
 	mc/aarch64/MachineInstSelectionAArch64.cpp
 	mc/aarch64/MachineInstSelectionAArch64.h
 	mc/aarch64/MachineCodeWriterAArch64.cpp

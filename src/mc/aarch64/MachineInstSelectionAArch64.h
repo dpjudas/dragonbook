@@ -91,9 +91,16 @@ private:
 	void callWin64(IRInstCall* node);
 	void callUnix64(IRInstCall* node);
 
+	void simpleCompareInst(IRInstBinary* node, MachineInstOpcodeAArch64 opSet, MachineInstOpcodeAArch64 opSet2 = MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64 opSet3 = MachineInstOpcodeAArch64::nop);
+	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps);
+	void shiftBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps);
+	void divBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps, bool remainder, bool zeroext);
+
 	void addDebugInfo(MachineInst* inst);
 	void pushValueOperand(MachineInst* inst, IRValue* operand, int dataSizeType);
 	void pushBBOperand(MachineInst* inst, IRBasicBlock* bb);
+
+	void emitPhi(IRBasicBlock* target);
 
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3);
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType, const MachineOperand& operand3);
