@@ -159,37 +159,29 @@ void MachineInstSelectionAArch64::inst(IRInstFSub* node)
 
 void MachineInstSelectionAArch64::inst(IRInstNot* node)
 {
-	static const MachineInstOpcodeAArch64 movOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::mov64, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32 };
 	static const MachineInstOpcodeAArch64 notOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::not64, MachineInstOpcodeAArch64::not32, MachineInstOpcodeAArch64::not32, MachineInstOpcodeAArch64::not32 };
 
 	int dataSizeType = getDataSizeType(node->type);
 	auto dst = newReg(node);
-	emitInst(movOps[dataSizeType], dst, node->operand, dataSizeType);
-	emitInst(notOps[dataSizeType], dst);
+	emitInst(notOps[dataSizeType], dst, node->operand, dataSizeType);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstNeg* node)
 {
-	static const MachineInstOpcodeAArch64 movOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::mov64, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32 };
 	static const MachineInstOpcodeAArch64 negOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::neg64, MachineInstOpcodeAArch64::neg32, MachineInstOpcodeAArch64::neg32, MachineInstOpcodeAArch64::neg32 };
 
 	int dataSizeType = getDataSizeType(node->type);
 	auto dst = newReg(node);
-	emitInst(movOps[dataSizeType], dst, node->operand, dataSizeType);
-	emitInst(negOps[dataSizeType], dst);
+	emitInst(negOps[dataSizeType], dst, node->operand, dataSizeType);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstFNeg* node)
 {
-	/*
-	static const MachineInstOpcodeAArch64 xorOps[] = { MachineInstOpcodeAArch64::xorpd, MachineInstOpcodeAArch64::xorps, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop };
-	static const MachineInstOpcodeAArch64 subOps[] = { MachineInstOpcodeAArch64::subsd, MachineInstOpcodeAArch64::subss, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop };
+	static const MachineInstOpcodeAArch64 fnegOps[] = { MachineInstOpcodeAArch64::negsd, MachineInstOpcodeAArch64::negss, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop };
 
 	int dataSizeType = getDataSizeType(node->type);
 	auto dst = newReg(node);
-	emitInst(xorOps[dataSizeType], dst, dst);
-	emitInst(subOps[dataSizeType], dst, node->operand, dataSizeType);
-	*/
+	emitInst(fnegOps[dataSizeType], dst, node->operand, dataSizeType);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstMul* node)
@@ -376,11 +368,6 @@ void MachineInstSelectionAArch64::inst(IRInstZExt* node)
 	int srcDataSizeType = getDataSizeType(node->value->type);
 	auto dst = newReg(node);
 
-	if (dstDataSizeType == 2 && srcDataSizeType == 3)
-	{
-		emitInst(MachineInstOpcodeAArch64::xor64, dst, dst);
-	}
-
 	emitInst(movsxOps[srcDataSizeType * 6 + dstDataSizeType], dst, node->value, srcDataSizeType);
 }
 
@@ -456,6 +443,7 @@ void MachineInstSelectionAArch64::inst(IRInstFPToSI* node)
 
 void MachineInstSelectionAArch64::inst(IRInstUIToFP* node)
 {
+	/*
 	static const MachineInstOpcodeAArch64 movOps[] = { MachineInstOpcodeAArch64::movsd, MachineInstOpcodeAArch64::movss, MachineInstOpcodeAArch64::mov64, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32 };
 	static const MachineInstOpcodeAArch64 cvtOps[] = { MachineInstOpcodeAArch64::cvtsi2sd, MachineInstOpcodeAArch64::cvtsi2sd, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop };
 	int dstDataSizeType = getDataSizeType(node->type);
@@ -483,10 +471,12 @@ void MachineInstSelectionAArch64::inst(IRInstUIToFP* node)
 		auto dst = newReg(node);
 		emitInst(cvtOps[dstDataSizeType], dst, node->value, dstDataSizeType);
 	}
+	*/
 }
 
 void MachineInstSelectionAArch64::inst(IRInstSIToFP* node)
 {
+	/*
 	static const MachineInstOpcodeAArch64 movOps[] = { MachineInstOpcodeAArch64::movsd, MachineInstOpcodeAArch64::movss, MachineInstOpcodeAArch64::mov64, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32 };
 	static const MachineInstOpcodeAArch64 cvtOps[] = { MachineInstOpcodeAArch64::cvtsi2sd, MachineInstOpcodeAArch64::cvtsi2ss, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop };
 	int dstDataSizeType = getDataSizeType(node->type);
@@ -520,6 +510,7 @@ void MachineInstSelectionAArch64::inst(IRInstSIToFP* node)
 		auto dst = newReg(node);
 		emitInst(cvtOps[dstDataSizeType], dst, node->value, dstDataSizeType);
 	}
+	*/
 }
 
 void MachineInstSelectionAArch64::inst(IRInstBitCast* node)
@@ -617,7 +608,7 @@ void MachineInstSelectionAArch64::inst(IRInstAlloca* node)
 	size = (size + 15) / 16 * 16;
 
 	// sub rsp,size
-	emitInst(MachineInstOpcodeAArch64::sub64, newPhysReg(RegisterNameAArch64::sp), newImm(size));
+	emitInst(MachineInstOpcodeAArch64::sub64, newPhysReg(RegisterNameAArch64::sp), newPhysReg(RegisterNameAArch64::sp), newImm(size));
 
 	MachineOperand dst = newReg(node);
 	MachineOperand src = newPhysReg(RegisterNameAArch64::sp);

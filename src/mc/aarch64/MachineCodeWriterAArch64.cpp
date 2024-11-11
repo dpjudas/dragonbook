@@ -529,7 +529,7 @@ void MachineCodeWriterAArch64::sub64(MachineInst* inst)
 	else
 	{
 		// SUB (extended register)
-		uint32_t opcode = 0b11001011001'00000'010'000'00000'00000;
+		uint32_t opcode = 0b11001011001'00000'011'000'00000'00000;
 		opcode |= getPhysReg(inst->operands[2]) << 16; // Rm
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
@@ -561,20 +561,18 @@ void MachineCodeWriterAArch64::sub32(MachineInst* inst)
 
 void MachineCodeWriterAArch64::not64(MachineInst* inst)
 {
-	// ORN (shifted register)
-	uint32_t opcode = 0b10101010'00'1'00000'000000'00000'00000;
-	opcode |= getPhysReg(RegisterNameAArch64::zxr) << 16; // Rm
-	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	// MVN (bitwise NOT)
+	uint32_t opcode = 0b10101010'00'1'00000'000000'11111'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 16; // Rm
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::not32(MachineInst* inst)
 {
-	// ORN (shifted register)
-	uint32_t opcode = 0b00101010'00'1'00000'000000'00000'00000;
-	opcode |= getPhysReg(RegisterNameAArch64::zxr) << 16; // Rm
-	opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
+	// MVN (bitwise NOT)
+	uint32_t opcode = 0b00101010'00'1'00000'000000'11111'00000;
+	opcode |= getPhysReg(inst->operands[1]) << 16; // Rm
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -582,7 +580,7 @@ void MachineCodeWriterAArch64::not32(MachineInst* inst)
 void MachineCodeWriterAArch64::neg64(MachineInst* inst)
 {
 	// NEG (shifted register)
-	uint32_t opcode = 0b11001011'00'00000'000000'11111'00000;
+	uint32_t opcode = 0b11001011'00'0'00000'000000'11111'00000;
 	opcode |= getPhysReg(inst->operands[1]) << 16; // Rm
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
@@ -591,7 +589,7 @@ void MachineCodeWriterAArch64::neg64(MachineInst* inst)
 void MachineCodeWriterAArch64::neg32(MachineInst* inst)
 {
 	// NEG (shifted register)
-	uint32_t opcode = 0b01001011'00'00000'000000'11111'00000;
+	uint32_t opcode = 0b01001011'00'0'00000'000000'11111'00000;
 	opcode |= getPhysReg(inst->operands[1]) << 16; // Rm
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
