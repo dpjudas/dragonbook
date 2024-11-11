@@ -30,8 +30,13 @@ void MachineCodeHolder::addFunction(IRFunction* func)
 		MachineFunction* mcfunc = MachineInstSelectionAarch64::dumpinstructions(func);
 #endif
 #else
+#ifdef USE_X64
 		MachineFunction* mcfunc = MachineInstSelectionX64::codegen(func);
 		RegisterAllocatorX64::run(func->context, mcfunc);
+#else
+		MachineFunction* mcfunc = MachineInstSelectionAArch64::codegen(func);
+		RegisterAllocatorAArch64::run(func->context, mcfunc);
+#endif
 #endif
 
 #ifdef USE_X64
@@ -105,7 +110,11 @@ void MachineCodeHolder::relocate(void* codeDest, void* dataDest, void* unwindDes
 
 	for (const auto& entry : bbRelocateInfo)
 	{
+#ifdef USE_X64
 		int32_t value = (int32_t)(bbOffsets.find(entry.bb)->second - entry.pos - 4);
+#else
+		int32_t value = (int32_t)(bbOffsets.find(entry.bb)->second - entry.pos) / 4;
+#endif
 		int32_t data = 0;
 		memcpy(&data, codeDest8 + entry.pos, sizeof(int32_t));
 		data = (data & ~entry.mask) | ((value << entry.shift) & entry.mask);

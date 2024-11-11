@@ -520,7 +520,7 @@ void MachineCodeWriterAArch64::sub64(MachineInst* inst)
 	if (inst->operands[2].type == MachineOperandType::imm)
 	{
 		// SUB (immediate)
-		uint32_t opcode = 0b101000100'000000000000'00000'00000;
+		uint32_t opcode = 0b1101000100'000000000000'00000'00000;
 		opcode |= (inst->operands[2].immvalue & ((1 << 12) - 1)) << 10; // imm12
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd
@@ -542,7 +542,7 @@ void MachineCodeWriterAArch64::sub32(MachineInst* inst)
 	if (inst->operands[2].type == MachineOperandType::imm)
 	{
 		// SUB (immediate)
-		uint32_t opcode = 0b101000100'000000000000'00000'00000;
+		uint32_t opcode = 0b0101000100'000000000000'00000'00000;
 		opcode |= (inst->operands[2].immvalue & ((1 << 12) - 1)) << 10; // imm12
 		opcode |= getPhysReg(inst->operands[1]) << 5; // Rn
 		opcode |= getPhysReg(inst->operands[0]); // Rd

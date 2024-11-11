@@ -214,6 +214,7 @@ void RegisterAllocatorAArch64::emitProlog(const std::vector<RegisterNameAArch64>
 		auto inst = context->newMachineInst();
 		inst->opcode = (int)MachineInstOpcodeAArch64::sub64;
 		inst->operands.push_back(dst);
+		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
 		inst->unwindHint = MachineUnwindHint::StackAdjustment;
 		func->prolog->code.push_back(inst);
@@ -317,6 +318,7 @@ void RegisterAllocatorAArch64::emitEpilog(const std::vector<RegisterNameAArch64>
 
 		auto inst = context->newMachineInst();
 		inst->opcode = (int)MachineInstOpcodeAArch64::add64;
+		inst->operands.push_back(dst);
 		inst->operands.push_back(dst);
 		inst->operands.push_back(src);
 		func->epilog->code.push_back(inst);
@@ -471,6 +473,7 @@ void RegisterAllocatorAArch64::assignVirt2Phys(int vregIndex, int pregIndex)
 
 		auto inst = context->newMachineInst();
 		inst->opcode = (int)MachineInstOpcodeAArch64::add64;
+		inst->operands.push_back(dest);
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
 		inst->comment = "ptr " + getVRegName(vregIndex);

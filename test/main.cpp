@@ -520,6 +520,26 @@ int main(int argc, char** argv)
 {
 	try
 	{
+#if !defined(_M_X64) && !defined(__x86_64)
+		{
+			IRContext context;
+			IRFunctionType* funcType = context.getFunctionType(context.getVoidTy(), {});
+			IRFunction* func = context.createFunction(funcType, "test");
+
+			IRBuilder builder;
+			builder.SetInsertPoint(func->createBasicBlock("entry"));
+			builder.CreateRetVoid();
+
+			JITRuntime jit;
+			jit.add(&context);
+
+			void(*ptr)() = reinterpret_cast<void(*)()>(jit.getPointerToFunction("test"));
+			ptr();
+
+			return 0;
+		}
+#endif
+
 		InstructionTester tester;
 
 		tester.Unary<int8_t>("not_int8", [](auto cc, auto a) { return cc->CreateNot(a); }, [](int8_t a) { return ~a; });
