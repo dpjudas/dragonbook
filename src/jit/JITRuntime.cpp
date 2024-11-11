@@ -178,7 +178,7 @@ void* JITRuntime::getPointerToGlobal(const std::string& var)
 
 void JITRuntime::add(MachineCodeHolder* codeholder)
 {
-#if defined(_WIN64) && defined(_M_X64)
+#if defined(_WIN64)
 	size_t codeSize = codeholder->codeSize();
 	size_t dataSize = codeholder->dataSize();
 	size_t unwindDataSize = codeholder->unwindDataSize();
@@ -197,6 +197,7 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 
 	codeholder->relocate(baseaddr, dataaddr, unwindaddr);
 
+#if defined(_M_X64)
 	RUNTIME_FUNCTION* table = (RUNTIME_FUNCTION*)tableaddr;
 	int tableIndex = 0;
 	for (const auto& entry : codeholder->getFunctionTable())
@@ -218,6 +219,7 @@ void JITRuntime::add(MachineCodeHolder* codeholder)
 	frames.push_back((uint8_t*)table);
 	if (result == 0)
 		throw std::runtime_error("RtlAddFunctionTable failed");
+#endif
 
 	for (const auto& entry : codeholder->getFunctionTable())
 	{

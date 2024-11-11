@@ -8,6 +8,8 @@
 #include "aarch64/MachineCodeWriterAArch64.h"
 #include "aarch64/MachineInstSelectionAArch64.h"
 #include "aarch64/RegisterAllocatorAArch64.h"
+#include "aarch64/UnwindInfoWindowsAArch64.h"
+#include "aarch64/UnwindInfoUnixAArch64.h"
 
 #if defined(_M_X64) || defined(__x86_64)
 #define USE_X64
@@ -32,7 +34,11 @@ void MachineCodeHolder::addFunction(IRFunction* func)
 		RegisterAllocatorX64::run(func->context, mcfunc);
 #endif
 
+#ifdef USE_X64
 		MachineCodeWriterX64 mcwriter(this, mcfunc);
+#else
+		MachineCodeWriterAArch64 mcwriter(this, mcfunc);
+#endif
 		mcwriter.codegen();
 
 		entry.endAddress = code.size();
