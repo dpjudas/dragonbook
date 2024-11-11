@@ -199,13 +199,13 @@ void MachineInstSelectionAArch64::inst(IRInstFMul* node)
 void MachineInstSelectionAArch64::inst(IRInstSDiv* node)
 {
 	static const MachineInstOpcodeAArch64 ops[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::sdiv64, MachineInstOpcodeAArch64::sdiv32, MachineInstOpcodeAArch64::sdiv32, MachineInstOpcodeAArch64::udiv32 };
-	divBinaryInst(node, ops, false, false);
+	simpleBinaryInst(node, ops);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstUDiv* node)
 {
 	static const MachineInstOpcodeAArch64 ops[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::udiv64, MachineInstOpcodeAArch64::udiv32, MachineInstOpcodeAArch64::udiv32, MachineInstOpcodeAArch64::udiv32 };
-	divBinaryInst(node, ops, false, true);
+	simpleBinaryInst(node, ops);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstFDiv* node)
@@ -216,32 +216,64 @@ void MachineInstSelectionAArch64::inst(IRInstFDiv* node)
 
 void MachineInstSelectionAArch64::inst(IRInstSRem* node)
 {
-	static const MachineInstOpcodeAArch64 ops[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::sdiv64, MachineInstOpcodeAArch64::sdiv32, MachineInstOpcodeAArch64::sdiv32, MachineInstOpcodeAArch64::sdiv32 };
-	divBinaryInst(node, ops, true, false);
+	static const MachineInstOpcodeAArch64 divOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::sdiv64, MachineInstOpcodeAArch64::sdiv32, MachineInstOpcodeAArch64::sdiv32, MachineInstOpcodeAArch64::sdiv32 };
+	static const MachineInstOpcodeAArch64 msubOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::msub64, MachineInstOpcodeAArch64::msub32, MachineInstOpcodeAArch64::msub32, MachineInstOpcodeAArch64::msub32 };
+	static const MachineInstOpcodeAArch64 movOps[] = { MachineInstOpcodeAArch64::movsd, MachineInstOpcodeAArch64::movss, MachineInstOpcodeAArch64::mov64, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32 };
+
+	int dataSizeType = getDataSizeType(node->type);
+	auto dst = newReg(node);
+	if (isConstantInt(node->operand2))
+	{
+		auto immreg = newTempReg(MachineRegClass::gp);
+		emitInst(movOps[dataSizeType], immreg, node->operand2, dataSizeType);
+		emitInst(divOps[dataSizeType], dst, node->operand1, immreg);
+		emitInst(msubOps[dataSizeType], dst, dst, immreg, node->operand1, dataSizeType);
+	}
+	else
+	{
+		emitInst(divOps[dataSizeType], dst, node->operand1, node->operand2, dataSizeType);
+		emitInst(msubOps[dataSizeType], dst, dst, node->operand2, node->operand1, dataSizeType);
+	}
 }
 
 void MachineInstSelectionAArch64::inst(IRInstURem* node)
 {
-	static const MachineInstOpcodeAArch64 ops[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::udiv64, MachineInstOpcodeAArch64::udiv32, MachineInstOpcodeAArch64::udiv32, MachineInstOpcodeAArch64::udiv32 };
-	divBinaryInst(node, ops, true, true);
+	static const MachineInstOpcodeAArch64 divOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::udiv64, MachineInstOpcodeAArch64::udiv32, MachineInstOpcodeAArch64::udiv32, MachineInstOpcodeAArch64::udiv32 };
+	static const MachineInstOpcodeAArch64 msubOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::msub64, MachineInstOpcodeAArch64::msub32, MachineInstOpcodeAArch64::msub32, MachineInstOpcodeAArch64::msub32 };
+	static const MachineInstOpcodeAArch64 movOps[] = { MachineInstOpcodeAArch64::movsd, MachineInstOpcodeAArch64::movss, MachineInstOpcodeAArch64::mov64, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32 };
+
+	int dataSizeType = getDataSizeType(node->type);
+	auto dst = newReg(node);
+	if (isConstantInt(node->operand2))
+	{
+		auto immreg = newTempReg(MachineRegClass::gp);
+		emitInst(movOps[dataSizeType], immreg, node->operand2, dataSizeType);
+		emitInst(divOps[dataSizeType], dst, node->operand1, immreg);
+		emitInst(msubOps[dataSizeType], dst, dst, immreg, node->operand1, dataSizeType);
+	}
+	else
+	{
+		emitInst(divOps[dataSizeType], dst, node->operand1, node->operand2, dataSizeType);
+		emitInst(msubOps[dataSizeType], dst, dst, node->operand2, node->operand1, dataSizeType);
+	}
 }
 
 void MachineInstSelectionAArch64::inst(IRInstShl* node)
 {
 	static const MachineInstOpcodeAArch64 ops[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::shl64, MachineInstOpcodeAArch64::shl32, MachineInstOpcodeAArch64::shl32, MachineInstOpcodeAArch64::shl32 };
-	shiftBinaryInst(node, ops);
+	simpleBinaryInst(node, ops);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstLShr* node)
 {
 	static const MachineInstOpcodeAArch64 ops[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::shr64, MachineInstOpcodeAArch64::shr32, MachineInstOpcodeAArch64::shr32, MachineInstOpcodeAArch64::shr32 };
-	shiftBinaryInst(node, ops);
+	simpleBinaryInst(node, ops);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstAShr* node)
 {
 	static const MachineInstOpcodeAArch64 ops[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::sar64, MachineInstOpcodeAArch64::sar32, MachineInstOpcodeAArch64::sar32, MachineInstOpcodeAArch64::sar32 };
-	shiftBinaryInst(node, ops);
+	simpleBinaryInst(node, ops);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpSLT* node)
@@ -774,66 +806,6 @@ void MachineInstSelectionAArch64::simpleBinaryInst(IRInstBinary* node, const Mac
 	}
 }
 
-void MachineInstSelectionAArch64::shiftBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps)
-{
-	simpleBinaryInst(node, binaryOps);
-}
-
-void MachineInstSelectionAArch64::divBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps, bool remainder, bool zeroext)
-{
-	/*
-	static const MachineInstOpcodeAArch64 movOps[] = { MachineInstOpcodeAArch64::movsd, MachineInstOpcodeAArch64::movss, MachineInstOpcodeAArch64::mov64, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov8 };
-	static const MachineInstOpcodeAArch64 sarOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::sar64, MachineInstOpcodeAArch64::sar32, MachineInstOpcodeAArch64::sar16, MachineInstOpcodeAArch64::sar8 };
-	static const MachineInstOpcodeAArch64 xorOps[] = { MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64::xor64, MachineInstOpcodeAArch64::xor32, MachineInstOpcodeAArch64::xor16, MachineInstOpcodeAArch64::xor8 };
-	static const int shiftcount[] = { 0, 0, 63, 31, 15, 7 };
-
-	int dataSizeType = getDataSizeType(node->type);
-
-	auto dst = newReg(node);
-
-	// Move operand1 to rdx:rax
-	emitInst(movOps[dataSizeType], newPhysReg(RegisterNameAArch64::rax), node->operand1, dataSizeType);
-	if (dataSizeType != 5)
-	{
-		if (zeroext)
-		{
-			emitInst(xorOps[dataSizeType], newPhysReg(RegisterNameAArch64::rdx), newPhysReg(RegisterNameAArch64::rdx));
-		}
-		else
-		{
-			emitInst(movOps[dataSizeType], newPhysReg(RegisterNameAArch64::rdx), newPhysReg(RegisterNameAArch64::rax));
-			emitInst(sarOps[dataSizeType], newPhysReg(RegisterNameAArch64::rdx), newImm(shiftcount[dataSizeType]));
-		}
-	}
-	else
-	{
-		emitInst(zeroext ? MachineInstOpcodeAArch64::movzx8_16 : MachineInstOpcodeAArch64::movsx8_16, newPhysReg(RegisterNameAArch64::rax), newPhysReg(RegisterNameAArch64::rax));
-	}
-
-	// Divide
-	if (isConstant(node->operand2) || isGlobalVariable(node->operand2))
-	{
-		emitInst(movOps[dataSizeType], dst, node->operand2, dataSizeType);
-		emitInst(binaryOps[dataSizeType], dst);
-	}
-	else
-	{
-		emitInst(binaryOps[dataSizeType], node->operand2, dataSizeType);
-	}
-
-	// Move rax to dest
-	if (dataSizeType != 5 || !remainder)
-	{
-		emitInst(movOps[dataSizeType], dst, newPhysReg(remainder ? RegisterNameAArch64::rdx : RegisterNameAArch64::rax));
-	}
-	else // for 8 bit the remainder is in ah
-	{
-		emitInst(MachineInstOpcodeAArch64::shr16, newPhysReg(RegisterNameAArch64::rax), newImm(8));
-		emitInst(MachineInstOpcodeAArch64::mov8, dst, newPhysReg(RegisterNameAArch64::rax));
-	}
-	*/
-}
-
 void MachineInstSelectionAArch64::addDebugInfo(MachineInst* inst)
 {
 	// Transfer debug info to first instruction emitted
@@ -907,6 +879,30 @@ void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, cons
 	inst->opcode = (int)opcode;
 	inst->operands.push_back(operand1);
 	pushValueOperand(inst, operand2, dataSizeType);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3, IRValue* operand4, int dataSizeType)
+{
+	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
+	inst->opcode = (int)opcode;
+	inst->operands.push_back(operand1);
+	inst->operands.push_back(operand2);
+	inst->operands.push_back(operand3);
+	pushValueOperand(inst, operand4, dataSizeType);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, IRValue* operand3, IRValue* operand4, int dataSizeType)
+{
+	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
+	inst->opcode = (int)opcode;
+	inst->operands.push_back(operand1);
+	inst->operands.push_back(operand2);
+	pushValueOperand(inst, operand3, dataSizeType);
+	pushValueOperand(inst, operand4, dataSizeType);
 	bb->code.push_back(inst);
 }
 

@@ -79,6 +79,8 @@ private:
 	void sdiv32(MachineInst* inst);
 	void udiv64(MachineInst* inst);
 	void udiv32(MachineInst* inst);
+	void msub64(MachineInst* inst);
+	void msub32(MachineInst* inst);
 	void cvtsd2ss(MachineInst* inst);
 	void cvtss2sd(MachineInst* inst);
 	void cvttsd2si(MachineInst* inst);

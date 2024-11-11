@@ -93,8 +93,6 @@ private:
 
 	void simpleCompareInst(IRInstBinary* node, MachineInstOpcodeAArch64 opSet, MachineInstOpcodeAArch64 opSet2 = MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64 opSet3 = MachineInstOpcodeAArch64::nop);
 	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps);
-	void shiftBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps);
-	void divBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps, bool remainder, bool zeroext);
 
 	void addDebugInfo(MachineInst* inst);
 	void pushValueOperand(MachineInst* inst, IRValue* operand, int dataSizeType);
@@ -108,6 +106,8 @@ private:
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType, const MachineOperand& operand3);
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2);
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType);
+	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3, IRValue* operand4, int dataSizeType);
+	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, IRValue* operand3, IRValue* operand4, int dataSizeType);
 	void emitInst(MachineInstOpcodeAArch64 opcode, IRValue* operand1, int dataSizeType, const MachineOperand& operand2);
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand &operand);
 	void emitInst(MachineInstOpcodeAArch64 opcode, IRValue* operand, int dataSizeType);
