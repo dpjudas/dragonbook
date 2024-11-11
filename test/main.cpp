@@ -523,18 +523,18 @@ int main(int argc, char** argv)
 #if !defined(_M_X64) && !defined(__x86_64)
 		{
 			IRContext context;
-			IRFunctionType* funcType = context.getFunctionType(context.getVoidTy(), {});
+			IRFunctionType* funcType = context.getFunctionType(context.getInt32Ty(), { context.getInt32Ty(), context.getInt32Ty() });
 			IRFunction* func = context.createFunction(funcType, "test");
 
 			IRBuilder builder;
 			builder.SetInsertPoint(func->createBasicBlock("entry"));
-			builder.CreateRetVoid();
+			builder.CreateRet(builder.CreateAdd(func->args[0], func->args[1]));
 
 			JITRuntime jit;
 			jit.add(&context);
 
-			void(*ptr)() = reinterpret_cast<void(*)()>(jit.getPointerToFunction("test"));
-			ptr();
+			int(*ptr)(int,int) = reinterpret_cast<int(*)(int,int)>(jit.getPointerToFunction("test"));
+			std::cout << ptr(40, 2) << std::endl;
 
 			return 0;
 		}

@@ -769,22 +769,17 @@ void MachineInstSelectionAArch64::simpleBinaryInst(IRInstBinary* node, const Mac
 	int dataSizeType = getDataSizeType(node->type);
 	auto dst = newReg(node);
 
-	// Move operand1 to dest
-	emitInst(movOps[dataSizeType], dst, node->operand1, dataSizeType);
-
-	// Apply operand2 to dest
-
 	// 64 bit constants needs to be moved into a register first
 	bool needs64BitImm = (dataSizeType == 2) && isConstantInt(node->operand2) && (getConstantValueInt(node->operand2) < -0x7fffffff || getConstantValueInt(node->operand2) > 0x7fffffff);
 	if (needs64BitImm)
 	{
 		auto immreg = newTempReg(MachineRegClass::gp);
 		emitInst(movOps[dataSizeType], immreg, node->operand2, dataSizeType);
-		emitInst(binaryOps[dataSizeType], dst, immreg);
+		emitInst(binaryOps[dataSizeType], dst, node->operand1, immreg);
 	}
 	else
 	{
-		emitInst(binaryOps[dataSizeType], dst, node->operand2, dataSizeType);
+		emitInst(binaryOps[dataSizeType], dst, node->operand1, node->operand2, dataSizeType);
 	}
 }
 
@@ -868,6 +863,28 @@ void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, cons
 	inst->operands.push_back(operand1);
 	inst->operands.push_back(operand2);
 	inst->operands.push_back(operand3);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, IRValue* operand2, const MachineOperand& operand3)
+{
+	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
+	inst->opcode = (int)opcode;
+	inst->operands.push_back(operand1);
+	inst->operands.push_back(instRegister[operand2]);
+	inst->operands.push_back(operand3);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, IRValue* operand2, IRValue* operand3, int dataSizeType)
+{
+	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
+	inst->opcode = (int)opcode;
+	inst->operands.push_back(operand1);
+	inst->operands.push_back(instRegister[operand2]);
+	pushValueOperand(inst, operand3, dataSizeType);
 	bb->code.push_back(inst);
 }
 

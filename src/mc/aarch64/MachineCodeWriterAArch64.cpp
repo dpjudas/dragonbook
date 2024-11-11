@@ -344,8 +344,8 @@ void MachineCodeWriterAArch64::mov32(MachineInst* inst)
 	{
 		// MOV (register)
 		uint32_t opcode = 0b00101010000'00000'000000'11111'00000;
-		opcode |= getPhysReg(inst->operands[0]) << 16; // Rm
-		opcode |= getPhysReg(inst->operands[1]); // Rd
+		opcode |= getPhysReg(inst->operands[1]) << 16; // Rm
+		opcode |= getPhysReg(inst->operands[0]); // Rd
 		writeOpcode(opcode, inst);
 	}
 }
