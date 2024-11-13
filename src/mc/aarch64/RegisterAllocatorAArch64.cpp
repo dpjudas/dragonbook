@@ -139,29 +139,18 @@ void RegisterAllocatorAArch64::run()
 	};
 #endif
 
-	// [funcargs] [retaddr] <framebase> [save/spill area] <spillbase> [dsa/alloca area] [callargs] <rsp>
+	// [funcargs] <framebase> [saved regs] [spill area] <spillbase> [dsa/alloca area] [callargs] <sp>
 
-	int callReturnAddr = 8;
-	int pushStackAdjustment = (int)savedRegs.size() * 8;
-	int spillAreaSize = (int)savedXmmRegs.size() * 16 + nextSpillOffset;
-	int callargsSize = (func->maxCallArgsSize + 15) / 16 * 16;
-
-	if ((savedRegs.size() & 1) == 0) // xmm must be 16-byte aligned
-		spillAreaSize += 8;
-
-	// rsp is 16-byte aligned + 8 bytes (for the call return address) when entering the prolog.
-	// Alloca needs to be 16-byte aligned, so the sum of the return address, the pushed registers and spill area needs to end at a 16-byte boundary
-	int allocaStart = (callReturnAddr + pushStackAdjustment + spillAreaSize + 15) / 16 * 16;
-	spillAreaSize = allocaStart - pushStackAdjustment - callReturnAddr;
-
-	int frameSize = pushStackAdjustment + spillAreaSize + callargsSize;
-	int frameStackAdjustment = frameSize - pushStackAdjustment;
+	int savedRegsSize = alignUp((int)savedRegs.size() * 8, 16) + (int)savedXmmRegs.size() * 16;
+	int spillAreaSize = alignUp(nextSpillOffset, 16);
+	int callargsSize = alignUp(func->maxCallArgsSize, 16);
+	int frameSize = savedRegsSize + spillAreaSize + callargsSize;
 
 	func->frameBaseOffset = frameSize;
 	func->spillBaseOffset = callargsSize;
 
-	emitProlog(savedRegs, savedXmmRegs, frameStackAdjustment, func->dynamicStackAllocations);
-	emitEpilog(savedRegs, savedXmmRegs, frameStackAdjustment, func->dynamicStackAllocations);
+	emitProlog(savedRegs, savedXmmRegs, frameSize, func->dynamicStackAllocations);
+	emitEpilog(savedRegs, savedXmmRegs, frameSize, func->dynamicStackAllocations);
 }
 
 void RegisterAllocatorAArch64::updateModifiedStatus(MachineInst* inst)
@@ -185,22 +174,7 @@ void RegisterAllocatorAArch64::updateModifiedStatus(MachineInst* inst)
 
 void RegisterAllocatorAArch64::emitProlog(const std::vector<RegisterNameAArch64>& savedRegs, const std::vector<RegisterNameAArch64>& savedXmmRegs, int stackAdjustment, bool dsa)
 {
-	/*
-	for (RegisterNameAArch64 physReg : savedRegs)
-	{
-		MachineOperand src;
-		src.type = MachineOperandType::reg;
-		src.registerIndex = (int)physReg;
-
-		auto inst = context->newMachineInst();
-		inst->opcode = (int)MachineInstOpcodeAArch64::push;
-		inst->operands.push_back(src);
-		inst->unwindHint = MachineUnwindHint::PushNonvolatile;
-		func->prolog->code.push_back(inst);
-	}
-	*/
-
-	// sub rsp, stacksize
+	// sub sp, sp, stacksize
 	if (stackAdjustment > 0)
 	{
 		MachineOperand dst;
@@ -220,28 +194,41 @@ void RegisterAllocatorAArch64::emitProlog(const std::vector<RegisterNameAArch64>
 		func->prolog->code.push_back(inst);
 	}
 
-	int xmmStartOffset = -(int)savedRegs.size() * 8;
-	if ((savedRegs.size() & 1) == 0) // xmm must be 16-byte aligned
-		xmmStartOffset -= 8;
+	MachineOperand stacklocation;
+	stacklocation.type = MachineOperandType::spillOffset;
+	stacklocation.spillOffset = alignUp(nextSpillOffset, 16);
 
-	int i = 1;
+	for (RegisterNameAArch64 physReg : savedRegs)
+	{
+		MachineOperand src;
+		src.type = MachineOperandType::reg;
+		src.registerIndex = (int)physReg;
+
+		auto inst = context->newMachineInst();
+		inst->opcode = (int)MachineInstOpcodeAArch64::mov64;
+		inst->operands.push_back(stacklocation);
+		inst->operands.push_back(src);
+		inst->unwindHint = MachineUnwindHint::RegisterStackLocation;
+		func->prolog->code.push_back(inst);
+
+		stacklocation.spillOffset += 8;
+	}
+	stacklocation.spillOffset = alignUp(stacklocation.spillOffset, 16);
+
 	for (RegisterNameAArch64 physReg : savedXmmRegs)
 	{
-		MachineOperand dst;
-		dst.type = MachineOperandType::frameOffset;
-		dst.frameOffset = xmmStartOffset - i * 16;
-
 		MachineOperand src;
 		src.type = MachineOperandType::reg;
 		src.registerIndex = (int)physReg;
 
 		auto inst = context->newMachineInst();
 		inst->opcode = (int)MachineInstOpcodeAArch64::movsd;
-		inst->operands.push_back(dst);
+		inst->operands.push_back(stacklocation);
 		inst->operands.push_back(src);
 		inst->unwindHint = MachineUnwindHint::RegisterStackLocation;
 		func->prolog->code.push_back(inst);
-		i++;
+
+		stacklocation.spillOffset += 16;
 	}
 
 	if (dsa)
@@ -282,27 +269,39 @@ void RegisterAllocatorAArch64::emitEpilog(const std::vector<RegisterNameAArch64>
 		func->epilog->code.push_back(inst);
 	}
 
-	int xmmStartOffset = -(int)savedRegs.size() * 8;
-	if ((savedRegs.size() & 1) == 0) // xmm must be 16-byte aligned
-		xmmStartOffset -= 8;
+	MachineOperand stacklocation;
+	stacklocation.type = MachineOperandType::spillOffset;
+	stacklocation.spillOffset = alignUp(nextSpillOffset, 16);
 
-	int i = 1;
+	for (RegisterNameAArch64 physReg : savedRegs)
+	{
+		MachineOperand dst;
+		dst.type = MachineOperandType::reg;
+		dst.registerIndex = (int)physReg;
+
+		auto inst = context->newMachineInst();
+		inst->opcode = (int)MachineInstOpcodeAArch64::mov64;
+		inst->operands.push_back(dst);
+		inst->operands.push_back(stacklocation);
+		func->epilog->code.push_back(inst);
+
+		stacklocation.spillOffset += 8;
+	}
+	stacklocation.spillOffset = alignUp(stacklocation.spillOffset, 16);
+
 	for (RegisterNameAArch64 physReg : savedXmmRegs)
 	{
 		MachineOperand dst;
 		dst.type = MachineOperandType::reg;
 		dst.registerIndex = (int)physReg;
 
-		MachineOperand src;
-		src.type = MachineOperandType::frameOffset;
-		src.frameOffset = xmmStartOffset - i * 16;
-
 		auto inst = context->newMachineInst();
 		inst->opcode = (int)MachineInstOpcodeAArch64::movsd;
 		inst->operands.push_back(dst);
-		inst->operands.push_back(src);
+		inst->operands.push_back(stacklocation);
 		func->epilog->code.push_back(inst);
-		i++;
+
+		stacklocation.spillOffset += 16;
 	}
 
 	// add rsp, stacksize
@@ -323,22 +322,6 @@ void RegisterAllocatorAArch64::emitEpilog(const std::vector<RegisterNameAArch64>
 		inst->operands.push_back(src);
 		func->epilog->code.push_back(inst);
 	}
-
-	/*
-	for (auto it = savedRegs.rbegin(); it != savedRegs.rend(); ++it)
-	{
-		RegisterNameAArch64 physReg = *it;
-
-		MachineOperand dst;
-		dst.type = MachineOperandType::reg;
-		dst.registerIndex = (int)physReg;
-
-		auto inst = context->newMachineInst();
-		inst->opcode = (int)MachineInstOpcodeAArch64::pop;
-		inst->operands.push_back(dst);
-		func->epilog->code.push_back(inst);
-	}
-	*/
 
 	{
 		auto inst = context->newMachineInst();
@@ -641,7 +624,7 @@ void RegisterAllocatorAArch64::setupArgs()
 
 	MachineOperand stacklocation;
 	stacklocation.type = MachineOperandType::frameOffset;
-	stacklocation.frameOffset = 8;
+	stacklocation.frameOffset = 0;
 
 	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
 	for (int i = 0; i < (int)functype->args.size(); i++)

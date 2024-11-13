@@ -76,6 +76,8 @@ private:
 
 	std::string getVRegName(size_t vregIndex);
 
+	static int alignUp(int size, int alignment) { return (size + alignment - 1) / alignment * alignment; }
+
 	std::vector<RegisterNameAArch64> volatileRegs;
 	std::set<RegisterNameAArch64> usedRegs;
 
