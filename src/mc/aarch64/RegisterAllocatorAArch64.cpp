@@ -620,33 +620,54 @@ void RegisterAllocatorAArch64::addLiveReference(size_t vregIndex, MachineBasicBl
 
 void RegisterAllocatorAArch64::setupArgs()
 {
-	const int numRegisterArgs = 8;
+	int nextGP = 0; // NGRN
+	int nextXmm = 0; // NSRN
 
 	MachineOperand stacklocation;
 	stacklocation.type = MachineOperandType::frameOffset;
-	stacklocation.frameOffset = 0;
+	stacklocation.frameOffset = 0; // NSAA
 
 	IRFunctionType* functype = dynamic_cast<IRFunctionType*>(func->type);
 	for (int i = 0; i < (int)functype->args.size(); i++)
 	{
 		int vregindex = (int)RegisterNameAArch64::vregstart + i;
-
-		reginfo[vregindex].stacklocation = stacklocation;
-		stacklocation.frameOffset += 8;
-
-		if (i < numRegisterArgs)
+		if (reginfo[vregindex].cls == MachineRegClass::gp)
 		{
-			int pregIndex;
-			if (reginfo[vregindex].cls == MachineRegClass::gp)
-				pregIndex = (int)RegisterNameAArch64::x0 + (int)i;
+			if (nextGP < 8)
+			{
+				int pregIndex = (int)RegisterNameAArch64::x0 + nextGP;
+				nextGP++;
+
+				reginfo[vregindex].modified = true;
+				reginfo[vregindex].physreg = pregIndex;
+				reginfo[pregIndex].vreg = vregindex;
+
+				setAsMostRecentlyUsed(pregIndex);
+			}
 			else
-				pregIndex = (int)RegisterNameAArch64::xmm0 + (int)i;
+			{
+				reginfo[vregindex].stacklocation = stacklocation;
+				stacklocation.frameOffset += 8;
+			}
+		}
+		else
+		{
+			if (nextXmm < 8)
+			{
+				int pregIndex = (int)RegisterNameAArch64::xmm0 + nextXmm;
+				nextXmm++;
 
-			reginfo[vregindex].modified = true;
-			reginfo[vregindex].physreg = pregIndex;
-			reginfo[pregIndex].vreg = vregindex;
+				reginfo[vregindex].modified = true;
+				reginfo[vregindex].physreg = pregIndex;
+				reginfo[pregIndex].vreg = vregindex;
 
-			setAsMostRecentlyUsed(pregIndex);
+				setAsMostRecentlyUsed(pregIndex);
+			}
+			else
+			{
+				reginfo[vregindex].stacklocation = stacklocation;
+				stacklocation.frameOffset += 8;
+			}
 		}
 	}
 
