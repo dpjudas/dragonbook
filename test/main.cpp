@@ -727,14 +727,14 @@ int main(int argc, char** argv)
 #if defined(_M_X64) || defined(__x86_64)
 		tester.FPConstants<float>("fpconstants_float");
 		tester.FPConstants<double>("fpconstants_double");
-
+#endif
 		tester.RegisterSpillI<uint8_t>("registerspill_i8");
 		tester.RegisterSpillI<uint16_t>("registerspill_i16");
 		tester.RegisterSpillI<uint32_t>("registerspill_i32");
 		tester.RegisterSpillI<uint64_t>("registerspill_i64");
 		tester.RegisterSpillF<float>("registerspill_float");
 		tester.RegisterSpillF<double>("registerspill_double");
-#endif
+
 		tester.Run();
 
 		return 0;

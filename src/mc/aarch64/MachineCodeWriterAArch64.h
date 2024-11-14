@@ -18,6 +18,7 @@ private:
 	void opcode(MachineInst* inst);
 
 	void nop(MachineInst* inst);
+	void lea(MachineInst* inst);
 	void loadss(MachineInst* inst);
 	void loadsd(MachineInst* inst);
 	void load64(MachineInst* inst);

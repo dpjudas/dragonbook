@@ -205,7 +205,7 @@ void RegisterAllocatorAArch64::emitProlog(const std::vector<RegisterNameAArch64>
 		src.registerIndex = (int)physReg;
 
 		auto inst = context->newMachineInst();
-		inst->opcode = (int)MachineInstOpcodeAArch64::mov64;
+		inst->opcode = (int)MachineInstOpcodeAArch64::store64;
 		inst->operands.push_back(stacklocation);
 		inst->operands.push_back(src);
 		inst->unwindHint = MachineUnwindHint::RegisterStackLocation;
@@ -222,7 +222,7 @@ void RegisterAllocatorAArch64::emitProlog(const std::vector<RegisterNameAArch64>
 		src.registerIndex = (int)physReg;
 
 		auto inst = context->newMachineInst();
-		inst->opcode = (int)MachineInstOpcodeAArch64::movsd;
+		inst->opcode = (int)MachineInstOpcodeAArch64::storesd;
 		inst->operands.push_back(stacklocation);
 		inst->operands.push_back(src);
 		inst->unwindHint = MachineUnwindHint::RegisterStackLocation;
@@ -280,7 +280,7 @@ void RegisterAllocatorAArch64::emitEpilog(const std::vector<RegisterNameAArch64>
 		dst.registerIndex = (int)physReg;
 
 		auto inst = context->newMachineInst();
-		inst->opcode = (int)MachineInstOpcodeAArch64::mov64;
+		inst->opcode = (int)MachineInstOpcodeAArch64::load64;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(stacklocation);
 		func->epilog->code.push_back(inst);
@@ -296,7 +296,7 @@ void RegisterAllocatorAArch64::emitEpilog(const std::vector<RegisterNameAArch64>
 		dst.registerIndex = (int)physReg;
 
 		auto inst = context->newMachineInst();
-		inst->opcode = (int)MachineInstOpcodeAArch64::movsd;
+		inst->opcode = (int)MachineInstOpcodeAArch64::loadsd;
 		inst->operands.push_back(dst);
 		inst->operands.push_back(stacklocation);
 		func->epilog->code.push_back(inst);
@@ -455,8 +455,7 @@ void RegisterAllocatorAArch64::assignVirt2Phys(int vregIndex, int pregIndex)
 		MachineOperand src = vreg.stacklocation;
 
 		auto inst = context->newMachineInst();
-		inst->opcode = (int)MachineInstOpcodeAArch64::add64;
-		inst->operands.push_back(dest);
+		inst->opcode = (int)MachineInstOpcodeAArch64::lea;
 		inst->operands.push_back(dest);
 		inst->operands.push_back(src);
 		inst->comment = "ptr " + getVRegName(vregIndex);

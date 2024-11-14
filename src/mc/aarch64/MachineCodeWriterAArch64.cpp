@@ -35,6 +35,7 @@ void MachineCodeWriterAArch64::opcode(MachineInst* inst)
 	{
 	default:
 	case MachineInstOpcodeAArch64::nop: nop(inst); break;
+	case MachineInstOpcodeAArch64::lea: lea(inst); break;
 	case MachineInstOpcodeAArch64::loadss: loadss(inst); break;
 	case MachineInstOpcodeAArch64::loadsd: loadsd(inst); break;
 	case MachineInstOpcodeAArch64::load64: load64(inst); break;
@@ -148,6 +149,18 @@ void MachineCodeWriterAArch64::opcode(MachineInst* inst)
 void MachineCodeWriterAArch64::nop(MachineInst* inst)
 {
 	writeOpcode(0b11010101000000110010000000011111, inst);
+}
+
+void MachineCodeWriterAArch64::lea(MachineInst* inst)
+{
+	auto srcOffset = getImmediateOffset(inst->operands[1]);
+
+	// ADD (immediate)
+	uint32_t opcode = 0b1001000100'000000000000'00000'00000;
+	opcode |= (srcOffset.second & ((1 << 12) - 1)) << 10; // imm12
+	opcode |= getPhysReg(srcOffset.first) << 5; // Rn
+	opcode |= getPhysReg(inst->operands[0]); // Rd
+	writeOpcode(opcode, inst);
 }
 
 void MachineCodeWriterAArch64::loadss(MachineInst* inst)

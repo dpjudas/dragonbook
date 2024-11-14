@@ -5,6 +5,7 @@
 enum class MachineInstOpcodeAArch64 : int
 {
 	nop,
+	lea,
 	loadss, loadsd, load64, load32, load16, load8,
 	storess, storesd, store64, store32, store16, store8,
 	movss, movsd, mov64, mov32,
