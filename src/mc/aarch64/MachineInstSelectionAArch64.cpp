@@ -278,82 +278,82 @@ void MachineInstSelectionAArch64::inst(IRInstAShr* node)
 
 void MachineInstSelectionAArch64::inst(IRInstICmpSLT* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setl);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetlt);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpULT* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setb);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetcc);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstFCmpULT* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setb, MachineInstOpcodeAArch64::setnp, MachineInstOpcodeAArch64::and8);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetmi);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpSGT* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setg);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetgt);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpUGT* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::seta);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csethi);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstFCmpUGT* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::seta, MachineInstOpcodeAArch64::setnp, MachineInstOpcodeAArch64::and8);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetgt);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpSLE* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setle);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetle);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpULE* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setbe);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetls);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstFCmpULE* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setbe, MachineInstOpcodeAArch64::setnp, MachineInstOpcodeAArch64::and8);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetls);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpSGE* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setge);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetge);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpUGE* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setae);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetcs);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstFCmpUGE* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setae, MachineInstOpcodeAArch64::setnp, MachineInstOpcodeAArch64::and8);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetge);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpEQ* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::sete);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::cseteq);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstFCmpUEQ* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::sete, MachineInstOpcodeAArch64::setnp, MachineInstOpcodeAArch64::and8);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::cseteq);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstICmpNE* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setne);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetne);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstFCmpUNE* node)
 {
-	// simpleCompareInst(node, MachineInstOpcodeAArch64::setne, MachineInstOpcodeAArch64::setp, MachineInstOpcodeAArch64::or8);
+	simpleCompareInst(node, MachineInstOpcodeAArch64::csetne);
 }
 
 void MachineInstSelectionAArch64::inst(IRInstAnd* node)
@@ -734,54 +734,32 @@ void MachineInstSelectionAArch64::callUnix64(IRInstCall* node)
 {
 }
 
-void MachineInstSelectionAArch64::simpleCompareInst(IRInstBinary* node, MachineInstOpcodeAArch64 opSet, MachineInstOpcodeAArch64 opSet2, MachineInstOpcodeAArch64 opSet3)
+void MachineInstSelectionAArch64::simpleCompareInst(IRInstBinary* node, MachineInstOpcodeAArch64 opCSet)
 {
 	static const MachineInstOpcodeAArch64 movOps[] = { MachineInstOpcodeAArch64::movsd, MachineInstOpcodeAArch64::movss, MachineInstOpcodeAArch64::mov64, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32, MachineInstOpcodeAArch64::mov32 };
 	static const MachineInstOpcodeAArch64 cmpOps[] = { MachineInstOpcodeAArch64::fcmpsd, MachineInstOpcodeAArch64::fcmpss, MachineInstOpcodeAArch64::cmp64_zx64, MachineInstOpcodeAArch64::cmp32_zx32, MachineInstOpcodeAArch64::cmp32_zx16, MachineInstOpcodeAArch64::cmp32_zx8 };
 
 	int dataSizeType = getDataSizeType(node->operand1->type);
-
-	// operand1 must be in a register:
-	MachineOperand src1;
-	if (isConstant(node->operand1))
-	{
-		src1 = newTempReg(dataSizeType < 2 ? MachineRegClass::xmm : MachineRegClass::gp);
-		emitInst(movOps[dataSizeType], src1, node->operand1, dataSizeType);
-	}
-	else
-	{
-		src1 = instRegister[node->operand1];
-	}
-
-	// Create 8 bit register
 	auto dst = newReg(node);
 
-	// Perform comparison
-
-	// 64 bit constants needs to be moved into a register first
-	bool needs64BitImm = (dataSizeType == 2) && isConstantInt(node->operand2) && (getConstantValueInt(node->operand2) < -0x7fffffff || getConstantValueInt(node->operand2) > 0x7fffffff);
-	if (needs64BitImm)
+	if (isConstant(node->operand1))
 	{
-		auto immreg = newTempReg(MachineRegClass::gp);
+		auto immreg = newTempReg(dataSizeType < 2 ? MachineRegClass::xmm : MachineRegClass::gp);
+		emitInst(movOps[dataSizeType], immreg, node->operand1, dataSizeType);
+		emitInst(cmpOps[dataSizeType], immreg, node->operand2, dataSizeType);
+		emitInst(opCSet, dst);
+	}
+	else if (isConstant(node->operand2))
+	{
+		auto immreg = newTempReg(dataSizeType < 2 ? MachineRegClass::xmm : MachineRegClass::gp);
 		emitInst(movOps[dataSizeType], immreg, node->operand2, dataSizeType);
-		emitInst(cmpOps[dataSizeType], src1, immreg);
+		emitInst(cmpOps[dataSizeType], node->operand1, dataSizeType, immreg);
+		emitInst(opCSet, dst);
 	}
 	else
 	{
-		emitInst(cmpOps[dataSizeType], src1, node->operand2, dataSizeType);
-	}
-
-	if (opSet2 == MachineInstOpcodeAArch64::nop)
-	{
-		// Move result flag to register
-		emitInst(opSet, dst);
-	}
-	else
-	{
-		auto temp = newTempReg(MachineRegClass::gp);
-		emitInst(opSet, temp);
-		emitInst(opSet2, dst);
-		emitInst(opSet3, dst, temp);
+		emitInst(cmpOps[dataSizeType], node->operand1, node->operand2, dataSizeType);
+		emitInst(opCSet, dst);
 	}
 }
 
@@ -894,6 +872,17 @@ void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, cons
 	bb->code.push_back(inst);
 }
 
+void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, IRValue* operand3, int dataSizeType)
+{
+	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
+	inst->opcode = (int)opcode;
+	inst->operands.push_back(operand1);
+	inst->operands.push_back(operand2);
+	pushValueOperand(inst, operand3, dataSizeType);
+	bb->code.push_back(inst);
+}
+
 void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, IRValue* operand3, IRValue* operand4, int dataSizeType)
 {
 	auto inst = context->newMachineInst();
@@ -913,6 +902,16 @@ void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, IRVa
 	inst->opcode = (int)opcode;
 	pushValueOperand(inst, operand1, dataSizeType);
 	inst->operands.push_back(operand2);
+	bb->code.push_back(inst);
+}
+
+void MachineInstSelectionAArch64::emitInst(MachineInstOpcodeAArch64 opcode, IRValue* operand1, IRValue* operand2, int dataSizeType)
+{
+	auto inst = context->newMachineInst();
+	addDebugInfo(inst);
+	inst->opcode = (int)opcode;
+	pushValueOperand(inst, operand1, dataSizeType);
+	pushValueOperand(inst, operand2, dataSizeType);
 	bb->code.push_back(inst);
 }
 

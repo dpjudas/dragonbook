@@ -632,7 +632,6 @@ int main(int argc, char** argv)
 		tester.Convert<int64_t, int32_t>("zext_i64_i32", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int32_t a) { return (int64_t)(uint32_t)a; });
 		tester.Convert<int64_t, int64_t>("zext_i64_i64", [](auto cc, auto a, auto type) { return cc->CreateZExt(a, type); }, [](int64_t a) { return (int64_t)(uint64_t)a; });
 
-#if defined(_M_X64) || defined(__x86_64)
 		tester.Compare<int8_t>("icmpslt_i8", [](auto cc, auto a, auto b) { return cc->CreateICmpSLT(a, b); }, [](int8_t a, int8_t b) { return a < b; });
 		tester.Compare<int16_t>("icmpslt_i16", [](auto cc, auto a, auto b) { return cc->CreateICmpSLT(a, b); }, [](int16_t a, int16_t b) { return a < b; });
 		tester.Compare<int32_t>("icmpslt_i32", [](auto cc, auto a, auto b) { return cc->CreateICmpSLT(a, b); }, [](int32_t a, int32_t b) { return a < b; });
@@ -725,6 +724,7 @@ int main(int argc, char** argv)
 		tester.Store<float>("store_float");
 		tester.Store<double>("store_double");
 
+#if defined(_M_X64) || defined(__x86_64)
 		tester.FPConstants<float>("fpconstants_float");
 		tester.FPConstants<double>("fpconstants_double");
 

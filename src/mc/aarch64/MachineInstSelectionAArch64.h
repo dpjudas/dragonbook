@@ -91,7 +91,7 @@ private:
 	void callWin64(IRInstCall* node);
 	void callUnix64(IRInstCall* node);
 
-	void simpleCompareInst(IRInstBinary* node, MachineInstOpcodeAArch64 opSet, MachineInstOpcodeAArch64 opSet2 = MachineInstOpcodeAArch64::nop, MachineInstOpcodeAArch64 opSet3 = MachineInstOpcodeAArch64::nop);
+	void simpleCompareInst(IRInstBinary* node, MachineInstOpcodeAArch64 opCSet);
 	void simpleBinaryInst(IRInstBinary* node, const MachineInstOpcodeAArch64* binaryOps);
 
 	void addDebugInfo(MachineInst* inst);
@@ -107,8 +107,10 @@ private:
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2);
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, IRValue* operand2, int dataSizeType);
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, const MachineOperand& operand3, IRValue* operand4, int dataSizeType);
+	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, IRValue* operand3, int dataSizeType);
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand& operand1, const MachineOperand& operand2, IRValue* operand3, IRValue* operand4, int dataSizeType);
 	void emitInst(MachineInstOpcodeAArch64 opcode, IRValue* operand1, int dataSizeType, const MachineOperand& operand2);
+	void emitInst(MachineInstOpcodeAArch64 opcode, IRValue* operand1, IRValue* operand2, int dataSizeType);
 	void emitInst(MachineInstOpcodeAArch64 opcode, const MachineOperand &operand);
 	void emitInst(MachineInstOpcodeAArch64 opcode, IRValue* operand, int dataSizeType);
 	void emitInst(MachineInstOpcodeAArch64 opcode, IRBasicBlock* target);

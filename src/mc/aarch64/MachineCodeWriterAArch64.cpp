@@ -1177,7 +1177,7 @@ void MachineCodeWriterAArch64::cmp64_zx64(MachineInst* inst)
 void MachineCodeWriterAArch64::cseteq(MachineInst* inst)
 {
 	// CSET invcond NE
-	uint32_t opcode = 0b0001101010011111'0000'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'0001'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1185,7 +1185,7 @@ void MachineCodeWriterAArch64::cseteq(MachineInst* inst)
 void MachineCodeWriterAArch64::csetne(MachineInst* inst)
 {
 	// CSET invcond EQ
-	uint32_t opcode = 0b0001101010011111'0001'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'0000'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1193,7 +1193,7 @@ void MachineCodeWriterAArch64::csetne(MachineInst* inst)
 void MachineCodeWriterAArch64::csetcs(MachineInst* inst)
 {
 	// CSET invcond CC
-	uint32_t opcode = 0b0001101010011111'0010'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'0011'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1201,7 +1201,7 @@ void MachineCodeWriterAArch64::csetcs(MachineInst* inst)
 void MachineCodeWriterAArch64::csetcc(MachineInst* inst)
 {
 	// CSET invcond CS
-	uint32_t opcode = 0b0001101010011111'0011'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'0010'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1209,7 +1209,7 @@ void MachineCodeWriterAArch64::csetcc(MachineInst* inst)
 void MachineCodeWriterAArch64::csetmi(MachineInst* inst)
 {
 	// CSET invcond PL
-	uint32_t opcode = 0b0001101010011111'0100'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'0101'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1217,7 +1217,7 @@ void MachineCodeWriterAArch64::csetmi(MachineInst* inst)
 void MachineCodeWriterAArch64::csetpl(MachineInst* inst)
 {
 	// CSET invcond MI
-	uint32_t opcode = 0b0001101010011111'0101'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'0100'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1225,7 +1225,7 @@ void MachineCodeWriterAArch64::csetpl(MachineInst* inst)
 void MachineCodeWriterAArch64::csetvs(MachineInst* inst)
 {
 	// CSET invcond VC
-	uint32_t opcode = 0b0001101010011111'0110'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'0111'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1233,7 +1233,7 @@ void MachineCodeWriterAArch64::csetvs(MachineInst* inst)
 void MachineCodeWriterAArch64::csetvc(MachineInst* inst)
 {
 	// CSET invcond VS
-	uint32_t opcode = 0b0001101010011111'0111'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'0110'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1241,7 +1241,7 @@ void MachineCodeWriterAArch64::csetvc(MachineInst* inst)
 void MachineCodeWriterAArch64::csethi(MachineInst* inst)
 {
 	// CSET invcond LS
-	uint32_t opcode = 0b0001101010011111'1000'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'1001'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1249,7 +1249,7 @@ void MachineCodeWriterAArch64::csethi(MachineInst* inst)
 void MachineCodeWriterAArch64::csetls(MachineInst* inst)
 {
 	// CSET invcond HI
-	uint32_t opcode = 0b0001101010011111'1001'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'1000'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1257,7 +1257,7 @@ void MachineCodeWriterAArch64::csetls(MachineInst* inst)
 void MachineCodeWriterAArch64::csetge(MachineInst* inst)
 {
 	// CSET invcond LT
-	uint32_t opcode = 0b0001101010011111'1010'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'1011'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1265,7 +1265,7 @@ void MachineCodeWriterAArch64::csetge(MachineInst* inst)
 void MachineCodeWriterAArch64::csetlt(MachineInst* inst)
 {
 	// CSET invcond GE
-	uint32_t opcode = 0b0001101010011111'1011'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'1010'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1273,7 +1273,7 @@ void MachineCodeWriterAArch64::csetlt(MachineInst* inst)
 void MachineCodeWriterAArch64::csetgt(MachineInst* inst)
 {
 	// CSET invcond LE
-	uint32_t opcode = 0b0001101010011111'1100'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'1101'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
@@ -1281,7 +1281,7 @@ void MachineCodeWriterAArch64::csetgt(MachineInst* inst)
 void MachineCodeWriterAArch64::csetle(MachineInst* inst)
 {
 	// CSET invcond GT
-	uint32_t opcode = 0b0001101010011111'1101'0111111'00000;
+	uint32_t opcode = 0b0001101010011111'1100'0111111'00000;
 	opcode |= getPhysReg(inst->operands[0]); // Rd
 	writeOpcode(opcode, inst);
 }
